@@ -58,6 +58,7 @@ function onSimpleSelect(item: any, val: string) {
 		measure_name: `avg_of_${val}`,
 		data_type: 'Decimal',
 	}
+	;(item.measure as any).column_name = val
 }
 </script>
 
