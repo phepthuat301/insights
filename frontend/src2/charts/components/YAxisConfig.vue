@@ -38,7 +38,8 @@ const updateColor = debounce((color: string, idx: number) => {
 	y_axis.value.series[idx].color = color ? [color] : []
 }, 500)
 
-const numericColumns = computed(() => props.columnOptions.filter(c => ['Integer','Decimal'].includes(c.data_type)))
+// In simple mode, show all columns to allow quick selection
+const simpleColumns = computed(() => props.columnOptions)
 </script>
 
 <template>
@@ -52,9 +53,9 @@ const numericColumns = computed(() => props.columnOptions.filter(c => ['Integer'
 							<div class="flex w-full flex-col gap-1.5">
 								<div class="flex items-center gap-2">
 									<FormControl type="select" class="flex-1" placeholder="Select a column"
-										:options="numericColumns"
+										:options="simpleColumns"
 										v-model="(item.measure as any).column_name"
-										@update:modelValue="(val:string)=>{ (item.measure as any).aggregation='avg'; (item.measure as any).measure_name = `avg_of_${val}` }"
+										@update:modelValue="(val:string)=>{ (item.measure as any).aggregation='avg'; (item.measure as any).measure_name = `avg_of_${val}`; (item.measure as any).data_type='Decimal' }"
 									/>
 									<Button @click="y_axis.series.splice(index,1)"><template #icon><XIcon class="h-4 w-4 text-gray-700" stroke-width="1.5"/></template></Button>
 								</div>
