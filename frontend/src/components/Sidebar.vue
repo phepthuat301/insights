@@ -205,7 +205,7 @@ const sidebarItems = ref([
 	},
 	{
 		path: '/data-source',
-		label: 'Data Sources',
+		label: 'Data Sources Test',
 		icon: Database,
 		name: 'Data Source',
 	},

@@ -78,7 +78,7 @@ const links = ref([
 		to: 'WorkbookList',
 	},
 	{
-		label: 'Data Sources',
+		label: 'Data Sources Test',
 		icon: Database,
 		to: 'DataSourceList',
 	},
