@@ -40,6 +40,25 @@ const updateColor = debounce((color: string, idx: number) => {
 
 // In simple mode, show all columns to allow quick selection
 const simpleColumns = computed(() => props.columnOptions)
+
+function onSimpleSelect(item: any, val: string) {
+	const opt = props.columnOptions.find((o) => o.value === val)
+	if (opt && (opt.data_type === 'Integer' || opt.data_type === 'Decimal')) {
+		item.measure = {
+			column_name: val,
+			data_type: 'Decimal',
+			measure_name: `avg_of_${val}`,
+			aggregation: 'avg',
+		}
+		return
+	}
+	// auto-parse string with percent or numeric text to decimal
+	item.measure = {
+		expression: { type: 'expression', expression: `to_decimal(replace([${val}], '%', ''))` },
+		measure_name: `avg_of_${val}`,
+		data_type: 'Decimal',
+	}
+}
 </script>
 
 <template>
@@ -55,7 +74,7 @@ const simpleColumns = computed(() => props.columnOptions)
 									<FormControl type="select" class="flex-1" placeholder="Select a column"
 										:options="simpleColumns"
 										v-model="(item.measure as any).column_name"
-										@update:modelValue="(val:string)=>{ (item.measure as any).aggregation='avg'; (item.measure as any).measure_name = `avg_of_${val}`; (item.measure as any).data_type='Decimal' }"
+										@update:modelValue="(val:string)=> onSimpleSelect(item, val)"
 									/>
 									<Button @click="y_axis.series.splice(index,1)"><template #icon><XIcon class="h-4 w-4 text-gray-700" stroke-width="1.5"/></template></Button>
 								</div>
