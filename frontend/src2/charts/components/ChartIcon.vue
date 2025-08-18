@@ -10,6 +10,7 @@ import {
 	LineChart,
 	ScatterChart,
 	Table2,
+	Layers
 } from 'lucide-vue-next'
 import { computed } from 'vue'
 import { ChartType } from '../../types/chart.types'
@@ -35,6 +36,8 @@ const icon = computed(() => {
 			return Table2
 		case 'Number':
 			return Hash
+		case 'Mixed':
+			return Layers
 		default:
 			return BarChart3
 	}

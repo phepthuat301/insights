@@ -33,7 +33,7 @@ const loading = computed(
 
 const eChartOptions = computed(() => {
 	if (!result.value.columns?.length) return
-	if (chart_type.value === 'Bar' || chart_type.value === 'Row') {
+	if (chart_type.value === 'Bar' || chart_type.value === 'Row' || chart_type.value === 'Mixed') {
 		return getBarChartOptions(
 			config.value as BarChartConfig,
 			result.value,

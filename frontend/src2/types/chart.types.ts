@@ -1,6 +1,6 @@
 import { Dimension, Measure } from './query.types'
 
-export const AXIS_CHARTS = ['Bar', 'Line', 'Row']
+export const AXIS_CHARTS = ['Bar', 'Line', 'Row', 'Mixed']
 export type AxisChartType = (typeof AXIS_CHARTS)[number]
 
 export const CHARTS = ['Number', ...AXIS_CHARTS, 'Donut', 'Funnel', 'Table']

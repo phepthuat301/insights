@@ -63,7 +63,7 @@ const columnOptions = computed(() => chartQuery.value.result?.columnOptions || [
 		:column-options="columnOptions"
 	/>
 	<BarChartConfigForm
-		v-if="props.chart.doc.chart_type == 'Bar' || props.chart.doc.chart_type == 'Row'"
+		v-if="props.chart.doc.chart_type == 'Bar' || props.chart.doc.chart_type == 'Row' || props.chart.doc.chart_type == 'Mixed'"
 		v-model="(props.chart.doc.config as BarChartConfig)"
 		:dimensions="dimensions"
 		:column-options="columnOptions"
