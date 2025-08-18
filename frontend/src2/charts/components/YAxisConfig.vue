@@ -52,9 +52,9 @@ function onSimpleSelect(item: any, val: string) {
 		}
 		return
 	}
-	// auto-parse string (e.g., '12.3%') to number using ibis expression API
+	// auto-parse string (e.g., '12.3%') and aggregate with avg
 	item.measure = {
-		expression: { type: 'expression', expression: `replace(q['${val}'], '%', '').cast('float64')` },
+		expression: { type: 'expression', expression: `avg(replace(q['${val}'], '%', '').cast('float64'))` },
 		measure_name: `avg_of_${val}`,
 		data_type: 'Decimal',
 	}
