@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import ColorInput from '@/components/Controls/ColorInput.vue'
 import { debounce } from 'frappe-ui'
-import { watchEffect } from 'vue'
+import { watchEffect, computed } from 'vue'
 import Checkbox from '../../components/Checkbox.vue'
 import DraggableList from '../../components/DraggableList.vue'
 import InlineFormControlLabel from '../../components/InlineFormControlLabel.vue'
@@ -10,8 +10,9 @@ import { AxisChartConfig } from '../../types/chart.types'
 import { ColumnOption, MeasureOption } from '../../types/query.types'
 import CollapsibleSection from './CollapsibleSection.vue'
 import MeasurePicker from './MeasurePicker.vue'
+import { XIcon } from 'lucide-vue-next'
 
-const props = defineProps<{ columnOptions: ColumnOption[] }>()
+const props = defineProps<{ columnOptions: ColumnOption[]; simple?: boolean }>()
 const y_axis = defineModel<AxisChartConfig['y_axis']>({
 	required: true,
 	default: () => ({
@@ -36,6 +37,8 @@ const updateColor = debounce((color: string, idx: number) => {
 	}
 	y_axis.value.series[idx].color = color ? [color] : []
 }, 500)
+
+const numericColumns = computed(() => props.columnOptions.filter(c => ['Integer','Decimal'].includes(c.data_type)))
 </script>
 
 <template>
@@ -43,7 +46,29 @@ const updateColor = debounce((color: string, idx: number) => {
 		<div class="flex flex-col gap-3 pt-1">
 			<div>
 				<p class="mb-1.5 text-xs text-gray-600">Series</p>
-				<div>
+				<div v-if="props.simple">
+					<DraggableList v-model:items="y_axis.series" group="series">
+						<template #item="{ item, index }">
+							<div class="flex w-full flex-col gap-1.5">
+								<div class="flex items-center gap-2">
+									<FormControl type="select" class="flex-1" placeholder="Select a column"
+										:options="numericColumns"
+										v-model="(item.measure as any).column_name"
+										@update:modelValue="(val:string)=>{ (item.measure as any).aggregation='avg'; (item.measure as any).measure_name = `avg_of_${val}` }"
+									/>
+									<Button @click="y_axis.series.splice(index,1)"><template #icon><XIcon class="h-4 w-4 text-gray-700" stroke-width="1.5"/></template></Button>
+								</div>
+								<div class="flex gap-2">
+									<FormControl type="select" class="flex-1" label="Type" :options="['Line','Bar']" v-model="item.type" />
+									<FormControl type="select" class="flex-1" label="Align" :options="['Left','Right']" v-model="item.align" />
+								</div>
+							</div>
+						</template>
+					</DraggableList>
+					<button class="mt-1.5 text-left text-xs text-gray-600 hover:underline" @click="addSeries">+ Add series</button>
+				</div>
+
+				<div v-else>
 					<DraggableList v-model:items="y_axis.series" group="series">
 						<template #item="{ item, index }">
 							<MeasurePicker

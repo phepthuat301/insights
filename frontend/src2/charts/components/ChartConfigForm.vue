@@ -17,6 +17,7 @@ import FunnelChartConfigForm from './FunnelChartConfigForm.vue'
 import LineChartConfigForm from './LineChartConfigForm.vue'
 import NumberChartConfigForm from './NumberChartConfigForm.vue'
 import TableChartConfigForm from './TableChartConfigForm.vue'
+import MixedChartConfigForm from './MixedChartConfigForm.vue'
 
 const props = defineProps<{ chart: Chart }>()
 
@@ -62,8 +63,14 @@ const columnOptions = computed(() => chartQuery.value.result?.columnOptions || [
 		:dimensions="dimensions"
 		:column-options="columnOptions"
 	/>
+	<MixedChartConfigForm
+		v-if="props.chart.doc.chart_type == 'Mixed'"
+		v-model="(props.chart.doc.config as BarChartConfig)"
+		:dimensions="dimensions"
+		:column-options="columnOptions"
+	/>
 	<BarChartConfigForm
-		v-if="props.chart.doc.chart_type == 'Bar' || props.chart.doc.chart_type == 'Row' || props.chart.doc.chart_type == 'Mixed'"
+		v-if="props.chart.doc.chart_type == 'Bar' || props.chart.doc.chart_type == 'Row'"
 		v-model="(props.chart.doc.config as BarChartConfig)"
 		:dimensions="dimensions"
 		:column-options="columnOptions"
