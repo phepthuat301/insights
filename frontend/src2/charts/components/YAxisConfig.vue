@@ -52,9 +52,9 @@ function onSimpleSelect(item: any, val: string) {
 		}
 		return
 	}
-	// auto-parse string with percent or numeric text to decimal
+	// auto-parse string (e.g., '12.3%') to number using ibis expression API
 	item.measure = {
-		expression: { type: 'expression', expression: `to_decimal(replace([${val}], '%', ''))` },
+		expression: { type: 'expression', expression: `replace(q['${val}'], '%', '').cast('float64')` },
 		measure_name: `avg_of_${val}`,
 		data_type: 'Decimal',
 	}
