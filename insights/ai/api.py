@@ -55,7 +55,7 @@ def generate_sql_from_query(natural_query: str, query_name: str):
                 if table.get("type") == "table" and table.get("table_name"):
                     # First try v3 doctype which stores table_name
                     ds_v3 = frappe.db.get_value(
-                        "Insights Table v3", {"table_name": table.get("table_name")}, "data_source"
+                        "Insights Table v3", {"table": table.get("table_name")}, "data_source"
                     )
                     if ds_v3:
                         return ds_v3
