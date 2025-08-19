@@ -191,7 +191,18 @@ def import_csv(table_label, table_name, filename, if_exists, columns, data_sourc
 @insights_whitelist()
 def delete_data_source(data_source):
     try:
-        frappe.delete_doc("Insights Data Source", data_source)
+        # Check if data source exists
+        if not frappe.db.exists("Insights Data Source v3", data_source):
+            notify(
+                **{
+                    "type": "error",
+                    "title": "Data Source Not Found",
+                    "message": f"Data Source '{data_source}' does not exist",
+                }
+            )
+            return
+            
+        frappe.delete_doc("Insights Data Source v3", data_source)
         notify(
             **{
                 "title": "Success",
