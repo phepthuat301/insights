@@ -433,6 +433,11 @@ class IbisQueryBuilder:
         if any(re.match(mmm_yyyy_pattern, str(val)) for val in sample_values):
             return 'MMM-YYYY'
             
+        # Check for M/YYYY or MM/YYYY format (e.g., "1/2015", "12/2016")
+        m_yyyy_slash_pattern = r'^\d{1,2}/\d{4}$'
+        if any(re.match(m_yyyy_slash_pattern, str(val)) for val in sample_values):
+            return 'M/YYYY'
+            
         # Check for YYYY-MM format (e.g., "2014-12") 
         yyyy_mm_pattern = r'^\d{4}-\d{2}$'
         if any(re.match(yyyy_mm_pattern, str(val)) for val in sample_values):
@@ -476,6 +481,25 @@ class IbisQueryBuilder:
             
             # Construct date string: YYYY-MM-01
             return year_part + '-' + month_num + '-01'
+            
+        elif format_type == 'M/YYYY':
+            # Convert "1/2015" or "12/2016" to "2015-01-01" or "2016-12-01"
+            import ibis
+            
+            # Split by "/" to get month and year parts
+            month_part = col.split('/')[0]
+            year_part = col.split('/')[1]
+            
+            # Pad month with leading zero if single digit
+            month_padded = (
+                ibis.case()
+                .when(month_part.length() == 1, '0' + month_part)
+                .else_(month_part)
+                .end()
+            )
+            
+            # Construct date string: YYYY-MM-01
+            return year_part + '-' + month_padded + '-01'
             
         elif format_type == 'YYYY-MM':
             # Convert "2014-12" to "2014-12-01"  
