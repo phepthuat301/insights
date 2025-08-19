@@ -126,6 +126,7 @@ SQL Query:
                 return self._call_local_llm(prompt)
         except Exception as e:
             error_msg = str(e)[:100]  # Truncate to avoid length issues
+            print(f"DEBUG: error_msg = {error_msg}")
             frappe.log_error(f"AI Service Error: {error_msg}")
             return "SELECT 1"  # Fallback query
     
