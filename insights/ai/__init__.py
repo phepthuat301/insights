@@ -4,14 +4,16 @@
 from .query_builder import AIQueryBuilder
 from .api import (
     generate_sql,
+    generate_sql_from_query,
     get_ai_settings,
     test_ai_connection,
-    get_available_data_sources
+    get_available_data_sources,
 )
 
 __all__ = [
     "AIQueryBuilder",
     "generate_sql",
+    "generate_sql_from_query",
     "get_ai_settings", 
     "test_ai_connection",
     "get_available_data_sources"
