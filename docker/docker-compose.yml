@@ -27,5 +27,14 @@ services:
       - 8000:8000
       - 9000:9000
 
+  adminer:
+    image: adminer:latest
+    ports:
+      - "8081:8080"
+    depends_on:
+      - mariadb
+    environment:
+      ADMINER_DEFAULT_SERVER: mariadb
+
 volumes:
   mariadb-data:
