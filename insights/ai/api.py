@@ -53,15 +53,18 @@ def generate_sql_from_query(natural_query: str, query_name: str):
                     continue
                 table = op.get("table") or {}
                 if table.get("type") == "table" and table.get("table_name"):
-                    # Try to fetch table doc and its data_source (or parent)
-                    tbl = frappe.get_all(
-                        "Insights Table",
-                        filters={"table": table.get("table_name")},
-                        fields=["name", "data_source", "parent"],
-                        limit=1,
+                    # First try v3 doctype which stores table_name
+                    ds_v3 = frappe.db.get_value(
+                        "Insights Table v3", {"table_name": table.get("table_name")}, "data_source"
                     )
-                    if tbl:
-                        return tbl[0].get("data_source") or tbl[0].get("parent")
+                    if ds_v3:
+                        return ds_v3
+                    # Fallback to legacy doctype that stores `table`
+                    ds_legacy = frappe.db.get_value(
+                        "Insights Table", {"table": table.get("table_name")}, "data_source"
+                    )
+                    if ds_legacy:
+                        return ds_legacy
                 if table.get("type") == "query" and table.get("query_name"):
                     try:
                         ref = frappe.get_doc("Insights Query v3", table.get("query_name"))
