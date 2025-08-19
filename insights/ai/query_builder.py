@@ -98,6 +98,7 @@ SQL Query:
     
     def _call_ai_service(self, prompt: str) -> str:
         """Call AI service (OpenAI, Anthropic, etc.)"""
+        print(f"DEBUG: self.settings = {self.settings}")
         if not self.settings.api_key:
             return "SELECT 1"  # Fallback query
         
