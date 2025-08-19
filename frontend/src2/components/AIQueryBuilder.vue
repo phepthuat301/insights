@@ -174,7 +174,8 @@ function applyToChart() {
   if (generatedSQL.value && props.chart) {
     emit('sql-applied', {
       sql: generatedSQL.value,
-      chart: props.chart
+      data_source: selectedDataSource.value,
+      chart: props.chart,
     })
   }
 }

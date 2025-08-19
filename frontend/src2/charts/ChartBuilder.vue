@@ -70,10 +70,25 @@ function handleQueryGenerated(data) {
 	console.log('AI Query Generated:', data)
 }
 
-function handleSQLApplied(data) {
-	console.log('SQL Applied to Chart:', data)
-	// Here you could implement logic to apply the SQL to the chart
-	// For now, just log the event
+async function handleSQLApplied(data: { sql: string; data_source: string }) {
+	const dq = chart.dataQuery
+	if (!dq) return
+
+	// Make underlying data query a native SQL query and apply SQL
+	dq.doc.is_native_query = true
+	dq.setSQL({ raw_sql: data.sql, data_source: data.data_source }, true)
+
+	// Default chart type to Table if not set for immediate feedback
+	if (!chart.doc.chart_type) {
+		// @ts-ignore - chart types are declared elsewhere
+		chart.doc.chart_type = 'Table'
+	}
+
+	// Ensure the chart points to this data query
+	if (!chart.doc.query) {
+		// @ts-ignore
+		chart.doc.query = dq.name
+	}
 }
 </script>
 
