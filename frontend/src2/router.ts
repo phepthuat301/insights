@@ -107,7 +107,7 @@ const routes = [
 ]
 
 let router = createRouter({
-	history: createWebHistory('/insights'),
+	history: createWebHistory('/insights/'),
 	// @ts-ignore
 	routes,
 })
