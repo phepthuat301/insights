@@ -3,7 +3,7 @@
 
 import frappe
 from frappe import _
-from insights.ai.query_builder import AIQueryBuilder
+from .query_builder import AIQueryBuilder
 
 
 @frappe.whitelist()
@@ -82,10 +82,39 @@ def test_ai_connection():
 def get_available_data_sources():
     """Get list of available data sources for AI"""
     try:
+        # Get all data sources
         data_sources = frappe.get_all(
             "Insights Data Source v3",
+            filters={"status": "Active"},
             fields=["name", "title", "database_type"]
         )
+        
+        # If no data sources found, try to get uploads data source
+        if not data_sources:
+            # Check if uploads data source exists
+            if frappe.db.exists("Insights Data Source v3", "uploads"):
+                uploads_ds = frappe.get_doc("Insights Data Source v3", "uploads")
+                data_sources = [{
+                    "name": uploads_ds.name,
+                    "title": uploads_ds.title,
+                    "database_type": uploads_ds.database_type
+                }]
+            else:
+                # Create uploads data source if it doesn't exist
+                uploads_ds = frappe.new_doc("Insights Data Source v3")
+                uploads_ds.name = "uploads"
+                uploads_ds.title = "Uploads"
+                uploads_ds.database_type = "DuckDB"
+                uploads_ds.database_name = "insights_file_uploads"
+                uploads_ds.owner = "Administrator"
+                uploads_ds.status = "Active"
+                uploads_ds.insert()
+                
+                data_sources = [{
+                    "name": uploads_ds.name,
+                    "title": uploads_ds.title,
+                    "database_type": uploads_ds.database_type
+                }]
         
         return {
             "success": True,

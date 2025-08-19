@@ -23,9 +23,12 @@
             :key="ds.name" 
             :value="ds.name"
           >
-            {{ ds.title }}
+            {{ ds.title }} ({{ ds.database_type }})
           </option>
         </select>
+        <small v-if="dataSources.length === 0" class="help-text">
+          No data sources found. Please create a data source first.
+        </small>
       </div>
 
       <!-- Natural Language Input -->
@@ -120,6 +123,9 @@ async function loadDataSources() {
     const result = await call('insights.ai.get_available_data_sources')
     if (result.success) {
       dataSources.value = result.data_sources
+      console.log('Loaded data sources:', dataSources.value)
+    } else {
+      console.error('Failed to load data sources:', result.error)
     }
   } catch (err) {
     console.error('Failed to load data sources:', err)

@@ -24,7 +24,12 @@ from insights.insights.doctype.insights_team.insights_team import (
 )
 
 # Import AI API endpoints
-from . import ai
+from insights.ai import (
+    generate_sql,
+    get_ai_settings,
+    test_ai_connection,
+    get_available_data_sources
+)
 
 
 @insights_whitelist()

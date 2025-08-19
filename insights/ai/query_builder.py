@@ -53,6 +53,10 @@ class AIQueryBuilder:
                 fields=["name", "table", "label"]
             )
             
+            # If no tables found, return basic info
+            if not tables:
+                return f"Data Source: {ds.title} ({ds.database_type})\nNo tables found. Please import some data first."
+            
             tables_info = []
             for table in tables:
                 # Get columns for each table
@@ -73,7 +77,7 @@ class AIQueryBuilder:
             
         except Exception as e:
             frappe.log_error(f"Error getting tables info: {str(e)}")
-            return "Tables information not available"
+            return f"Data Source: {data_source}\nTables information not available. Error: {str(e)}"
     
     def _create_prompt(self, natural_query: str, tables_info: str) -> str:
         """Create prompt for AI service"""

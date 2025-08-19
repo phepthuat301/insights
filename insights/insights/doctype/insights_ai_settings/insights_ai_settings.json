@@ -23,7 +23,8 @@
   {
    "fieldname": "api_key",
    "fieldtype": "Password",
-   "label": "API Key"
+   "label": "API Key",
+   "length": 200
   },
   {
    "default": "gpt-3.5-turbo",
