@@ -112,6 +112,8 @@ SQL Query:
             return "SELECT 1"  # Fallback query when key is missing
         
         try:
+            provider = getattr(self.settings, "ai_provider", "OpenAI")
+            print(f"DEBUG: provider={provider}, prompt_len={len(prompt)}")
             if self.settings.ai_provider == "OpenAI":
                 return self._call_openai(prompt, api_key)
             elif self.settings.ai_provider == "Anthropic":
@@ -121,6 +123,7 @@ SQL Query:
         except Exception as e:
             error_msg = str(e)[:100]  # Truncate to avoid length issues
             frappe.log_error(f"AI Service Error: {error_msg}")
+            print(f"DEBUG: AI service exception: {error_msg}")
             return "SELECT 1"  # Fallback query
     
     def _normalize_openai_model(self, name: str | None) -> str:
@@ -142,6 +145,7 @@ SQL Query:
             
             client = OpenAI(api_key=api_key)
             model = self._normalize_openai_model(getattr(self.settings, "model_name", None))
+            print(f"DEBUG: openai model={model}")
             response = client.chat.completions.create(
                 model=model or "gpt-3.5-turbo",
                 messages=[
@@ -151,8 +155,9 @@ SQL Query:
                 max_tokens=self.settings.max_tokens or 1000,
                 temperature=self.settings.temperature or 0.7
             )
-            
-            return response.choices[0].message.content.strip()
+            content = response.choices[0].message.content.strip()
+            print(f"DEBUG: openai response_len={len(content)}")
+            return content
             
         except ImportError:
             frappe.throw("OpenAI library not installed. Run: pip install openai")
@@ -161,6 +166,7 @@ SQL Query:
             try:
                 from openai import OpenAI
                 client = OpenAI(api_key=api_key)
+                print("DEBUG: retrying with gpt-3.5-turbo")
                 response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
@@ -170,11 +176,14 @@ SQL Query:
                     max_tokens=self.settings.max_tokens or 1000,
                     temperature=self.settings.temperature or 0.7
                 )
-                return response.choices[0].message.content.strip()
-            except Exception:
-                pass
+                content = response.choices[0].message.content.strip()
+                print(f"DEBUG: fallback response_len={len(content)}")
+                return content
+            except Exception as e2:
+                print(f"DEBUG: fallback exception: {str(e2)[:100]}")
             error_msg = str(e)[:100]  # Truncate to avoid length issues
             frappe.log_error(f"OpenAI API Error: {error_msg}")
+            print(f"DEBUG: openai exception: {error_msg}")
             return "SELECT 1"
     
     def _call_anthropic(self, prompt: str, api_key: str) -> str:
