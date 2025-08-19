@@ -13,23 +13,7 @@
     </div>
 
     <div v-if="isExpanded" class="ai-content">
-      <!-- Data Source Selector -->
-      <div class="form-group">
-        <label>Data Source:</label>
-        <select v-model="selectedDataSource" class="form-control">
-          <option value="">Select a data source</option>
-          <option 
-            v-for="ds in dataSources" 
-            :key="ds.name" 
-            :value="ds.name"
-          >
-            {{ ds.title }} ({{ ds.database_type }})
-          </option>
-        </select>
-        <small v-if="dataSources.length === 0" class="help-text">
-          No data sources found. Please create a data source first.
-        </small>
-      </div>
+      <!-- Uses the chart's selected query; no data source selector -->
 
       <!-- Natural Language Input -->
       <div class="form-group">
@@ -93,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { call } from 'frappe-ui'
 
 const props = defineProps({
@@ -105,31 +89,19 @@ const emit = defineEmits(['query-generated', 'sql-applied'])
 
 // Reactive data
 const isExpanded = ref(false)
-const selectedDataSource = ref('')
 const naturalQuery = ref('')
 const generatedSQL = ref('')
 const error = ref('')
 const isGenerating = ref(false)
-const dataSources = ref([])
+const resolvedDataSource = ref('')
 
 // Computed
 const canGenerate = computed(() => {
-  return selectedDataSource.value && naturalQuery.value.trim() && !isGenerating.value
+  return Boolean(props.chart?.doc?.query) && naturalQuery.value.trim() && !isGenerating.value
 })
 
-// Methods
-async function loadDataSources() {
-  try {
-    const result = await call('insights.ai.get_available_data_sources')
-    if (result.success) {
-      dataSources.value = result.data_sources
-      console.log('Loaded data sources:', dataSources.value)
-    } else {
-      console.error('Failed to load data sources:', result.error)
-    }
-  } catch (err) {
-    console.error('Failed to load data sources:', err)
-  }
+function getSelectedQueryName() {
+  return props.chart?.doc?.query || ''
 }
 
 async function generateQuery() {
@@ -140,17 +112,19 @@ async function generateQuery() {
   generatedSQL.value = ''
 
   try {
-    const result = await call('insights.ai.generate_sql', {
+    const result = await call('insights.ai.generate_sql_from_query', {
       natural_query: naturalQuery.value,
-      data_source: selectedDataSource.value
+      query_name: getSelectedQueryName()
     })
 
     if (result.success) {
       generatedSQL.value = result.sql
+      resolvedDataSource.value = result.data_source || ''
       emit('query-generated', {
         sql: result.sql,
         natural_query: result.natural_query,
-        data_source: result.data_source
+        data_source: result.data_source,
+        query_name: getSelectedQueryName()
       })
     } else {
       error.value = result.error || 'Failed to generate SQL'
@@ -166,7 +140,6 @@ async function generateQuery() {
 function copySQL() {
   if (generatedSQL.value) {
     navigator.clipboard.writeText(generatedSQL.value)
-    // You could add a toast notification here
   }
 }
 
@@ -174,7 +147,7 @@ function applyToChart() {
   if (generatedSQL.value && props.chart) {
     emit('sql-applied', {
       sql: generatedSQL.value,
-      data_source: selectedDataSource.value,
+      data_source: resolvedDataSource.value,
       chart: props.chart,
     })
   }
@@ -182,20 +155,13 @@ function applyToChart() {
 
 function createNewQuery() {
   if (generatedSQL.value) {
-    // Navigate to query builder with pre-filled SQL
     window.location.href = `/insights/query/new?sql=${encodeURIComponent(generatedSQL.value)}`
   }
 }
 
 function openAISettings() {
-  // Open AI settings in a new window or modal
   window.open('/app/insights-ai-settings', '_blank')
 }
-
-// Lifecycle
-onMounted(() => {
-  loadDataSources()
-})
 </script>
 
 <style scoped>

@@ -30,6 +30,34 @@ def generate_sql(natural_query: str, data_source: str):
 
 
 @frappe.whitelist()
+def generate_sql_from_query(natural_query: str, query_name: str):
+    """Generate SQL using the context of an existing Insights Query.
+
+    This uses the selected query (with joins/filters) to discover the underlying
+    data source and table/column info, so users don't have to pick a data source.
+    """
+    try:
+        ai_builder = AIQueryBuilder()
+        # Load the query to get its data source
+        query_doc = frappe.get_doc("Insights Query v3", query_name)
+        data_source = getattr(query_doc, "data_source", None)
+        result = ai_builder.natural_to_sql(natural_query, data_source)
+
+        if "error" in result:
+            return {"success": False, "error": result["error"]}
+
+        return {
+            "success": True,
+            "sql": result["sql"],
+            "natural_query": result["natural_query"],
+            "data_source": result.get("data_source"),
+        }
+    except Exception as e:
+        error_msg = str(e)[:100]
+        frappe.log_error(f"AI Generate SQL (from query) Error: {error_msg}")
+        return {"success": False, "error": error_msg}
+
+@frappe.whitelist()
 def get_ai_settings():
     """Get AI settings"""
     try:
