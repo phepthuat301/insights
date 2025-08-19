@@ -42,42 +42,37 @@ class AIQueryBuilder:
             return {"error": f"Failed to generate SQL: {error_msg}"}
     
     def _get_tables_info(self, data_source: str) -> str:
-        """Get information about available tables and columns"""
+        """Get information about available tables and columns.
+
+        Uses v3 schema via DS backend to introspect live columns so the AI gets accurate context.
+        """
         try:
-            # Get data source
             ds = frappe.get_doc("Insights Data Source v3", data_source)
-            
-            # Get tables
-            tables = frappe.get_all(
-                "Insights Table",
-                filters={"data_source": data_source},
-                fields=["name", "table", "label"]
-            )
-            
-            # If no tables found, return basic info
+            # Use existing helper to get tables
+            from insights.api.data_sources import get_data_source_tables
+            tables = get_data_source_tables(data_source)
+
             if not tables:
-                return f"Data Source: {ds.title} ({ds.database_type})\nNo tables found. Please import some data first."
-            
+                return f"Data Source: {ds.title} ({ds.database_type})\nNo tables registered."
+
             tables_info = []
-            for table in tables:
-                # Get columns for each table
-                columns = frappe.get_all(
-                    "Insights Table Column",
-                    filters={"parent": table.name},
-                    fields=["column", "label", "type"]
-                )
+            for t in tables:
+                table_name = t.get("table_name") or t.get("table") or t.get("name")
+                if not table_name:
+                    continue
+                # Get live schema from backend
+                ibis_table = ds.get_ibis_table(table_name)
+                columns = [(c, dt) for c, dt in ibis_table.schema().items()]
                 
-                table_info = f"Table: {table.label} ({table.table})\n"
-                table_info += "Columns:\n"
-                for col in columns:
-                    table_info += f"  - {col.label} ({col.column}): {col.type}\n"
-                
-                tables_info.append(table_info)
-            
-            return "\n".join(tables_info)
-            
+                info = [f"Table: {t.get('label') or table_name} ({table_name})", "Columns:"]
+                for col, dtype in columns:
+                    info.append(f"  - {col}: {dtype}")
+                tables_info.append("\n".join(info))
+
+            return "\n\n".join(tables_info)
+
         except Exception as e:
-            error_msg = str(e)[:100]  # Truncate to avoid length issues
+            error_msg = str(e)[:100]
             frappe.log_error(f"Error getting tables info: {error_msg}")
             return f"Data Source: {data_source}\nTables information not available. Error: {error_msg}"
     
