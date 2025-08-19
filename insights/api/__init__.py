@@ -23,6 +23,9 @@ from insights.insights.doctype.insights_team.insights_team import (
     check_data_source_permission,
 )
 
+# Import AI API endpoints
+from . import ai
+
 
 @insights_whitelist()
 def get_app_version():

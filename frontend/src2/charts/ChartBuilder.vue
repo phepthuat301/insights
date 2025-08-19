@@ -17,6 +17,7 @@ import ChartSortConfig from './components/ChartSortConfig.vue'
 import ChartTypeSelector from './components/ChartTypeSelector.vue'
 import CollapsibleSection from './components/CollapsibleSection.vue'
 import LazyTextInput from '../components/LazyTextInput.vue'
+import AIQueryBuilder from '../components/AIQueryBuilder.vue'
 
 const props = defineProps<{ chart_name: string; queries: DropdownOption[] }>()
 
@@ -63,6 +64,17 @@ function downloadChart() {
 }
 
 const showShareDialog = ref(false)
+
+// AI Query Builder handlers
+function handleQueryGenerated(data) {
+	console.log('AI Query Generated:', data)
+}
+
+function handleSQLApplied(data) {
+	console.log('SQL Applied to Chart:', data)
+	// Here you could implement logic to apply the SQL to the chart
+	// For now, just log the event
+}
 </script>
 
 <template>
@@ -88,6 +100,14 @@ const showShareDialog = ref(false)
 					</InlineFormControlLabel>
 				</div>
 			</CollapsibleSection>
+
+			<!-- AI Query Builder -->
+			<AIQueryBuilder 
+				:chart="chart" 
+				:workbook="chart.doc.workbook"
+				@query-generated="handleQueryGenerated"
+				@sql-applied="handleSQLApplied"
+			/>
 
 			<ChartConfigForm v-if="chart.doc.query" :chart="chart" />
 
