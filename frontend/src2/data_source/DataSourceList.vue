@@ -1,7 +1,7 @@
 <script setup lang="tsx">
-import { Avatar, Breadcrumbs, ListView } from 'frappe-ui'
+import { Avatar, Breadcrumbs, ListView, Dropdown, Button, FormControl } from 'frappe-ui'
 import { PlusIcon, SearchIcon, MoreHorizontal } from 'lucide-vue-next'
-import { computed, ref } from 'vue'
+import { computed, ref, h } from 'vue'
 import CSVIcon from '../components/Icons/CSVIcon.vue'
 import IndicatorIcon from '../components/Icons/IndicatorIcon.vue'
 import SelectTypeDialog from '../components/SelectTypeDialog.vue'
@@ -113,23 +113,25 @@ const listOptions = ref({
 			key: 'actions',
 			prefix: (props: any) => {
 				const data_source = props.row as DataSourceListItem
-				return (
-					<Dropdown
-						:options={[
-							{
-								label: 'Delete',
-								icon: 'trash',
-								onClick: () => handleDeleteDataSource(data_source.name),
-							},
-						]}
-					>
-						<Button variant="ghost" size="sm">
-							<template #icon>
-								<MoreHorizontal class="h-4 w-4 text-gray-700" stroke-width="1.5" />
-							</template>
-						</Button>
-					</Dropdown>
-				)
+				return h(Dropdown, {
+					options: [
+						{
+							label: 'Delete',
+							icon: 'trash',
+							onClick: () => handleDeleteDataSource(data_source.name),
+						},
+					],
+				}, {
+					default: () => h(Button, {
+						variant: 'ghost',
+						size: 'sm',
+					}, {
+						icon: () => h(MoreHorizontal, {
+							class: 'h-4 w-4 text-gray-700',
+							'stroke-width': '1.5',
+						}),
+					}),
+				})
 			},
 		},
 	],
