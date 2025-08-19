@@ -383,27 +383,30 @@ class IbisQueryBuilder:
         
         # For date/time casting from string, handle common formats intelligently
         if cast_args.data_type in ['Date', 'Datetime', 'Time']:
-            try:
-                # First try direct casting
-                return self.query.cast({col_name: dtype})
-            except Exception:
+            # Sample a few values to detect the format first
+            sample_values = self._sample_column_values(col_name)
+            print(f"DEBUG: sample_values = {sample_values}")
+            detected_format = self._detect_date_format(sample_values)
+            print(f"DEBUG: detected_format = {detected_format}")
+            
+            if detected_format:
                 try:
-                    # If direct casting fails, try to handle common date formats
-                    if cast_args.data_type in ['Date', 'Datetime']:
-                        # Sample a few values to detect the format
-                        sample_values = self._sample_column_values(col_name)
-                        detected_format = self._detect_date_format(sample_values)
-                        
-                        if detected_format:
-                            # Convert the format and then cast
-                            converted_col = self._convert_date_format(col, detected_format)
-                            return self.query.mutate(**{col_name: converted_col.cast(dtype)})
-                    
-                    # If format detection fails, fall back to direct cast
-                    return self.query.cast({col_name: dtype})
-                except Exception:
-                    # If all else fails, try direct cast anyway (might still work)
-                    return self.query.cast({col_name: dtype})
+                    # Convert the format and then cast
+                    print(f"DEBUG: Converting format {detected_format}")
+                    converted_col = self._convert_date_format(col, detected_format)
+                    return self.query.mutate(**{col_name: converted_col.cast(dtype)})
+                except Exception as e:
+                    print(f"DEBUG: Format conversion failed: {e}")
+                    # If format conversion fails, try direct cast
+                    pass
+            
+            # If no format detected or conversion failed, try direct casting
+            try:
+                print("DEBUG: Trying direct cast")
+                return self.query.cast({col_name: dtype})
+            except Exception as e:
+                print(f"DEBUG: Direct cast failed: {e}")
+                raise e
         
         return self.query.cast({col_name: dtype})
     
