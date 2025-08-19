@@ -177,11 +177,27 @@ def infer_type(value):
         return "Decimal"
     except Exception:
         try:
-            # test if datetime
-            pd.to_datetime(value)
+            # test if datetime - try common date formats
+            pd.to_datetime(value, infer_datetime_format=True)
             return "Datetime"
         except Exception:
-            return "String"
+            # try specific common formats for partial dates
+            try:
+                # Try MMM-YYYY format (e.g., "Dec-2014")
+                pd.to_datetime(value, format='%b-%Y')
+                return "Date"
+            except Exception:
+                try:
+                    # Try MM-YYYY format (e.g., "12-2014")
+                    pd.to_datetime(value, format='%m-%Y')
+                    return "Date"
+                except Exception:
+                    try:
+                        # Try YYYY-MM format (e.g., "2014-12")
+                        pd.to_datetime(value, format='%Y-%m')
+                        return "Date"
+                    except Exception:
+                        return "String"
 
 
 def infer_type_from_list(values):
