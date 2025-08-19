@@ -15,6 +15,22 @@ services:
   redis:
     image: redis:alpine
 
+  postgresql:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: insights_postgres
+      POSTGRES_USER: insights_user
+      POSTGRES_PASSWORD: insights123
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U insights_user -d insights_postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   frappe:
     image: frappe/bench:latest
     command: bash /workspace/init.sh
@@ -33,8 +49,10 @@ services:
       - "8081:8080"
     depends_on:
       - mariadb
+      - postgresql
     environment:
       ADMINER_DEFAULT_SERVER: mariadb
 
 volumes:
   mariadb-data:
+  postgresql-data:

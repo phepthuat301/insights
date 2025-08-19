@@ -1,6 +1,6 @@
 <script setup lang="tsx">
 import { Avatar, Breadcrumbs, ListView } from 'frappe-ui'
-import { PlusIcon, SearchIcon } from 'lucide-vue-next'
+import { PlusIcon, SearchIcon, MoreHorizontal } from 'lucide-vue-next'
 import { computed, ref } from 'vue'
 import CSVIcon from '../components/Icons/CSVIcon.vue'
 import IndicatorIcon from '../components/Icons/IndicatorIcon.vue'
@@ -12,6 +12,8 @@ import useDataSourceStore, { getDatabaseLogo } from './data_source'
 import { DataSourceListItem } from './data_source.types'
 import UploadCSVFileDialog from './UploadCSVFileDialog.vue'
 import ConnectDuckDBDialog from './ConnectDuckDBDialog.vue'
+import { confirmDialog } from '../helpers/confirm_dialog'
+import { dialogs } from '../helpers/confirm_dialog'
 
 const dataSourceStore = useDataSourceStore()
 dataSourceStore.getSources()
@@ -106,6 +108,30 @@ const listOptions = ref({
 		},
 		{ label: 'Created', key: 'created_from_now' },
 		{ label: 'Modified', key: 'modified_from_now' },
+		{
+			label: 'Actions',
+			key: 'actions',
+			prefix: (props: any) => {
+				const data_source = props.row as DataSourceListItem
+				return (
+					<Dropdown
+						:options={[
+							{
+								label: 'Delete',
+								icon: 'trash',
+								onClick: () => handleDeleteDataSource(data_source.name),
+							},
+						]}
+					>
+						<Button variant="ghost" size="sm">
+							<template #icon>
+								<MoreHorizontal class="h-4 w-4 text-gray-700" stroke-width="1.5" />
+							</template>
+						</Button>
+					</Dropdown>
+				)
+			},
+		},
 	],
 	rows: filteredDataSources,
 	rowKey: 'name',
@@ -127,6 +153,31 @@ const listOptions = ref({
 })
 
 document.title = 'Data Sources | Insights'
+
+const handleDeleteDataSource = async (name: string) => {
+	const dataSource = dataSourceStore.getSource(name)
+	if (!dataSource) return
+	
+	// Không cho phép xóa site database
+	if (dataSource.is_site_db) {
+		alert('Cannot delete the site database. It is needed for Insights.')
+		return
+	}
+	
+	confirmDialog({
+		title: 'Delete Data Source',
+		message: `Are you sure you want to delete the data source "${dataSource.title}"? This action cannot be undone.`,
+		primaryActionLabel: 'Delete',
+		theme: 'red',
+		onSuccess: async () => {
+			try {
+				await dataSourceStore.deleteDataSource(name)
+			} catch (error) {
+				console.error('Error deleting data source:', error)
+			}
+		},
+	})
+}
 </script>
 
 <template>
@@ -162,4 +213,9 @@ document.title = 'Data Sources | Insights'
 	<ConnectPostgreSQLDialog v-model="showNewPostgreSQLDialog" />
 	<ConnectDuckDBDialog v-model="showNewDuckDBDialog" />
 	<UploadCSVFileDialog v-model="showCSVFileUploadDialog" />
+	
+	<!-- Render dialogs -->
+	<template v-for="dialog in dialogs" :key="dialog">
+		<component :is="dialog" />
+	</template>
 </template>

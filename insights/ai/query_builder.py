@@ -37,8 +37,9 @@ class AIQueryBuilder:
             }
             
         except Exception as e:
-            frappe.log_error(f"AI Query Builder Error: {str(e)}")
-            return {"error": f"Failed to generate SQL: {str(e)}"}
+            error_msg = str(e)[:100]  # Truncate to avoid length issues
+            frappe.log_error(f"AI Query Builder Error: {error_msg}")
+            return {"error": f"Failed to generate SQL: {error_msg}"}
     
     def _get_tables_info(self, data_source: str) -> str:
         """Get information about available tables and columns"""
@@ -76,8 +77,9 @@ class AIQueryBuilder:
             return "\n".join(tables_info)
             
         except Exception as e:
-            frappe.log_error(f"Error getting tables info: {str(e)}")
-            return f"Data Source: {data_source}\nTables information not available. Error: {str(e)}"
+            error_msg = str(e)[:100]  # Truncate to avoid length issues
+            frappe.log_error(f"Error getting tables info: {error_msg}")
+            return f"Data Source: {data_source}\nTables information not available. Error: {error_msg}"
     
     def _create_prompt(self, natural_query: str, tables_info: str) -> str:
         """Create prompt for AI service"""
@@ -107,17 +109,18 @@ SQL Query:
             else:
                 return self._call_local_llm(prompt)
         except Exception as e:
-            frappe.log_error(f"AI Service Error: {str(e)}")
+            error_msg = str(e)[:100]  # Truncate to avoid length issues
+            frappe.log_error(f"AI Service Error: {error_msg}")
             return "SELECT 1"  # Fallback query
     
     def _call_openai(self, prompt: str) -> str:
         """Call OpenAI API"""
         try:
-            import openai
+            from openai import OpenAI
             
-            openai.api_key = self.settings.api_key
+            client = OpenAI(api_key=self.settings.api_key)
             
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=self.settings.model_name or "gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an expert SQL query generator. Return only valid SQL queries."},
@@ -132,7 +135,8 @@ SQL Query:
         except ImportError:
             frappe.throw("OpenAI library not installed. Run: pip install openai")
         except Exception as e:
-            frappe.log_error(f"OpenAI API Error: {str(e)}")
+            error_msg = str(e)[:100]  # Truncate to avoid length issues
+            frappe.log_error(f"OpenAI API Error: {error_msg}")
             return "SELECT 1"
     
     def _call_anthropic(self, prompt: str) -> str:

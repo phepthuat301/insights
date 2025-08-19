@@ -24,8 +24,9 @@ def generate_sql(natural_query: str, data_source: str):
         }
         
     except Exception as e:
-        frappe.log_error(f"AI Generate SQL Error: {str(e)}")
-        return {"success": False, "error": str(e)}
+        error_msg = str(e)[:100]  # Truncate to avoid length issues
+        frappe.log_error(f"AI Generate SQL Error: {error_msg}")
+        return {"success": False, "error": error_msg}
 
 
 @frappe.whitelist()
@@ -48,8 +49,9 @@ def get_ai_settings():
         }
         
     except Exception as e:
-        frappe.log_error(f"Get AI Settings Error: {str(e)}")
-        return {"success": False, "error": str(e)}
+        error_msg = str(e)[:100]  # Truncate to avoid length issues
+        frappe.log_error(f"Get AI Settings Error: {error_msg}")
+        return {"success": False, "error": error_msg}
 
 
 @frappe.whitelist()
@@ -74,8 +76,9 @@ def test_ai_connection():
         }
         
     except Exception as e:
-        frappe.log_error(f"Test AI Connection Error: {str(e)}")
-        return {"success": False, "error": str(e)}
+        error_msg = str(e)[:100]  # Truncate to avoid length issues
+        frappe.log_error(f"Test AI Connection Error: {error_msg}")
+        return {"success": False, "error": error_msg}
 
 
 @frappe.whitelist()
@@ -122,5 +125,6 @@ def get_available_data_sources():
         }
         
     except Exception as e:
-        frappe.log_error(f"Get Data Sources Error: {str(e)}")
-        return {"success": False, "error": str(e)} 
+        error_msg = str(e)[:100]  # Truncate to avoid length issues
+        frappe.log_error(f"Get Data Sources Error: {error_msg}")
+        return {"success": False, "error": error_msg} 

@@ -50,6 +50,21 @@ function createDataSource(data_source: DataSource) {
 		})
 }
 
+const deleting = ref(false)
+function deleteDataSource(name: string) {
+	deleting.value = true
+	return call('insights.api.data_sources.delete_data_source', { data_source: name })
+		.then(() => {
+			fetchSources()
+		})
+		.catch((error: Error) => {
+			showErrorToast(error)
+		})
+		.finally(() => {
+			deleting.value = false
+		})
+}
+
 export function getDataSourceList() {
 	if (!sources.value.length && !loading.value) {
 		fetchSources()
@@ -89,6 +104,9 @@ export default function useDataSourceStore() {
 
 		creating,
 		createDataSource,
+		
+		deleting,
+		deleteDataSource,
 	})
 }
 

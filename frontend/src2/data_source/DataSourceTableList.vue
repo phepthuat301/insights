@@ -1,10 +1,12 @@
 <script setup lang="tsx">
 import { watchDebounced } from '@vueuse/core'
 import { Breadcrumbs, ListView } from 'frappe-ui'
-import { MoreHorizontal, RefreshCcw, SearchIcon } from 'lucide-vue-next'
+import { MoreHorizontal, RefreshCcw, SearchIcon, Trash2 } from 'lucide-vue-next'
 import { h, ref, watchEffect } from 'vue'
 import useDataSourceStore from './data_source'
 import useTableStore, { DataSourceTable } from './tables'
+import { confirmDialog } from '../helpers/confirm_dialog'
+import { dialogs } from '../helpers/confirm_dialog'
 
 const props = defineProps<{ name: string }>()
 
@@ -55,6 +57,33 @@ watchEffect(() => {
 	const ds = dataSourceStore.getSource(props.name)
 	document.title = `Tables | ${props.name || ds?.title}`
 })
+
+const handleDeleteDataSource = async () => {
+	const dataSource = dataSourceStore.getSource(props.name)
+	if (!dataSource) return
+	
+	// Không cho phép xóa site database
+	if (dataSource.is_site_db) {
+		alert('Cannot delete the site database. It is needed for Insights.')
+		return
+	}
+	
+	confirmDialog({
+		title: 'Delete Data Source',
+		message: `Are you sure you want to delete the data source "${dataSource.title}"? This action cannot be undone.`,
+		primaryActionLabel: 'Delete',
+		theme: 'red',
+		onSuccess: async () => {
+			try {
+				await dataSourceStore.deleteDataSource(props.name)
+				// Redirect to data source list after deletion
+				window.location.href = '/data-source'
+			} catch (error) {
+				console.error('Error deleting data source:', error)
+			}
+		},
+	})
+}
 </script>
 
 <template>
@@ -100,7 +129,16 @@ watchEffect(() => {
 									}),
 						  }
 						: null,
-				]"
+					{
+						label: 'Delete Data Source',
+						onClick: handleDeleteDataSource,
+						icon: () =>
+							h(Trash2, {
+								class: 'h-4 w-4 text-red-600',
+								'stroke-width': '1.5',
+							}),
+					},
+				].filter(Boolean)"
 			>
 				<Button>
 					<template #icon>
@@ -111,4 +149,9 @@ watchEffect(() => {
 		</div>
 		<ListView class="h-full" v-bind="listOptions"> </ListView>
 	</div>
+	
+	<!-- Render dialogs -->
+	<template v-for="dialog in dialogs" :key="dialog">
+		<component :is="dialog" />
+	</template>
 </template>
