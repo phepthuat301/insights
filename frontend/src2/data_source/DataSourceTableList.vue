@@ -6,7 +6,6 @@ import { h, ref, watchEffect } from 'vue'
 import useDataSourceStore from './data_source'
 import useTableStore, { DataSourceTable } from './tables'
 import { confirmDialog } from '../helpers/confirm_dialog'
-import { dialogs } from '../helpers/confirm_dialog'
 
 const props = defineProps<{ name: string }>()
 
@@ -149,9 +148,4 @@ const handleDeleteDataSource = async () => {
 		</div>
 		<ListView class="h-full" v-bind="listOptions"> </ListView>
 	</div>
-	
-	<!-- Render dialogs -->
-	<template v-for="dialog in dialogs" :key="dialog">
-		<component :is="dialog" />
-	</template>
 </template>

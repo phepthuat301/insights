@@ -14,7 +14,6 @@ import { DataSourceListItem } from './data_source.types'
 import UploadCSVFileDialog from './UploadCSVFileDialog.vue'
 import ConnectDuckDBDialog from './ConnectDuckDBDialog.vue'
 import { confirmDialog } from '../helpers/confirm_dialog'
-import { dialogs } from '../helpers/confirm_dialog'
 
 const router = useRouter()
 const dataSourceStore = useDataSourceStore()
@@ -232,9 +231,4 @@ const handleDeleteDataSource = async (name: string) => {
 	<ConnectPostgreSQLDialog v-model="showNewPostgreSQLDialog" />
 	<ConnectDuckDBDialog v-model="showNewDuckDBDialog" />
 	<UploadCSVFileDialog v-model="showCSVFileUploadDialog" />
-	
-	<!-- Render dialogs -->
-	<template v-for="dialog in dialogs" :key="dialog">
-		<component :is="dialog" />
-	</template>
 </template>

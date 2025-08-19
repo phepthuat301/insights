@@ -16,7 +16,7 @@
 		</template>
 		<template #actions>
 			<div class="flex items-center justify-end space-x-2">
-				<Button @click="show = false">Cancel</Button>
+				<Button @click="hide">Cancel</Button>
 				<Button
 					variant="solid"
 					:theme="$props.theme"
@@ -34,7 +34,7 @@ import { ErrorMessage, FormControl } from 'frappe-ui'
 
 export default {
 	name: 'ConfirmDialog',
-	props: ['title', 'message', 'theme', 'fields', 'onSuccess', 'primaryActionLabel'],
+	props: ['title', 'message', 'theme', 'fields', 'onSuccess', 'primaryActionLabel', 'dialogId', 'onClose'],
 	data() {
 		return {
 			show: true,
@@ -64,6 +64,9 @@ export default {
 		},
 		hide() {
 			this.show = false
+			if (this.onClose) {
+				this.onClose()
+			}
 		},
 	},
 }
