@@ -119,6 +119,7 @@ SQL Query:
         
         try:
             if self.settings.ai_provider == "OpenAI":
+                print(f"DEBUG: calling openai", prompt)
                 return self._call_openai(prompt, api_key)
             elif self.settings.ai_provider == "Anthropic":
                 return self._call_anthropic(prompt, api_key)
