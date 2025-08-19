@@ -119,12 +119,15 @@ const listOptions = ref({
 							label: 'Delete',
 							icon: 'trash',
 							onClick: () => handleDeleteDataSource(data_source.name),
+							disabled: dataSourceStore.deleting,
 						},
 					],
+					disabled: dataSourceStore.deleting,
 				}, {
 					default: () => h(Button, {
 						variant: 'ghost',
 						size: 'sm',
+						disabled: dataSourceStore.deleting,
 					}, {
 						icon: () => h(MoreHorizontal, {
 							class: 'h-4 w-4 text-gray-700',
@@ -166,6 +169,9 @@ const handleDeleteDataSource = async (name: string) => {
 		return
 	}
 	
+	// Prevent multiple clicks while deleting
+	if (dataSourceStore.deleting) return
+	
 	confirmDialog({
 		title: 'Delete Data Source',
 		message: `Are you sure you want to delete the data source "${dataSource.title}"? This action cannot be undone.`,
@@ -174,8 +180,12 @@ const handleDeleteDataSource = async (name: string) => {
 		onSuccess: async () => {
 			try {
 				await dataSourceStore.deleteDataSource(name)
+				// Refresh the list after successful deletion
+				await dataSourceStore.getSources()
 			} catch (error) {
 				console.error('Error deleting data source:', error)
+				// Show error to user
+				alert(`Failed to delete data source: ${error.message || error}`)
 			}
 		},
 	})
@@ -191,6 +201,11 @@ const handleDeleteDataSource = async (name: string) => {
 					<PlusIcon class="w-4" />
 				</template>
 			</Button>
+			<!-- Loading indicator for deletion -->
+			<div v-if="dataSourceStore.deleting" class="flex items-center gap-2 text-sm text-gray-500">
+				<div class="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-500"></div>
+				Deleting...
+			</div>
 		</div>
 	</header>
 

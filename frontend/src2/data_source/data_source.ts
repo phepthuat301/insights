@@ -53,15 +53,24 @@ function createDataSource(data_source: DataSource) {
 const deleting = ref(false)
 function deleteDataSource(name: string) {
 	deleting.value = true
+	console.log('Deleting data source:', name)
 	return call('insights.api.data_sources.delete_data_source', { data_source: name })
-		.then(() => {
-			fetchSources()
+		.then((response: any) => {
+			console.log('Delete response:', response)
+			// Remove the deleted source from local state immediately
+			sources.value = sources.value.filter(source => source.name !== name)
+			console.log('Updated sources after deletion:', sources.value)
+			// Also refresh from server to ensure consistency
+			return fetchSources()
 		})
 		.catch((error: Error) => {
+			console.error('Delete error:', error)
 			showErrorToast(error)
+			throw error // Re-throw to let caller handle it
 		})
 		.finally(() => {
 			deleting.value = false
+			console.log('Delete operation completed')
 		})
 }
 
