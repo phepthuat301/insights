@@ -145,8 +145,7 @@ const listOptions = ref({
 	options: {
 		showTooltip: false,
 		getRowRoute: (data_source: DataSourceListItem) => ({
-			name: 'DataSourceTableList',
-			params: { name: data_source.name }
+			path: `/data-source/${data_source.name}`,
 		}),
 		emptyState: {
 			title: 'No data sources.',
@@ -185,10 +184,6 @@ const handleDeleteDataSource = async (name: string) => {
 				await dataSourceStore.deleteDataSource(name)
 				// Refresh the list after successful deletion
 				await dataSourceStore.getSources()
-				// Ensure we stay on the correct page
-				if (router.currentRoute.value.path !== '/data-source') {
-					router.push('/data-source')
-				}
 			} catch (error) {
 				console.error('Error deleting data source:', error)
 				// Show error to user
@@ -201,7 +196,7 @@ const handleDeleteDataSource = async (name: string) => {
 
 <template>
 	<header class="flex h-12 items-center justify-between border-b py-2.5 pl-5 pr-2">
-		<Breadcrumbs :items="[{ label: 'Data Sources', route: { name: 'DataSourceList' } }]" />
+		<Breadcrumbs :items="[{ label: 'Data Sources', route: '/data-source' }]" />
 		<div class="flex items-center gap-2">
 			<Button label="New Data Source" variant="solid" @click="showNewSourceDialog = true">
 				<template #prefix>
