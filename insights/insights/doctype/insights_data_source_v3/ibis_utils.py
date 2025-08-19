@@ -450,33 +450,42 @@ class IbisQueryBuilder:
         if format_type == 'MMM-YYYY':
             # Convert "Dec-2014" to "2014-12-01"
             # Use CASE statement to convert month names to numbers
-            month_map = {
-                'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
-                'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08', 
-                'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
-            }
+            import ibis
             
-            # Build a case expression for month conversion
-            case_expr = col.case()
-            for month_name, month_num in month_map.items():
-                case_expr = case_expr.when(col.contains(month_name), month_num)
-            month_num = case_expr.else_('01').end()
+            # Build a case expression for month conversion - proper ibis syntax
+            month_num = (
+                ibis.case()
+                .when(col.startswith('Jan'), '01')
+                .when(col.startswith('Feb'), '02')
+                .when(col.startswith('Mar'), '03')
+                .when(col.startswith('Apr'), '04')
+                .when(col.startswith('May'), '05')
+                .when(col.startswith('Jun'), '06')
+                .when(col.startswith('Jul'), '07')
+                .when(col.startswith('Aug'), '08')
+                .when(col.startswith('Sep'), '09')
+                .when(col.startswith('Oct'), '10')
+                .when(col.startswith('Nov'), '11')
+                .when(col.startswith('Dec'), '12')
+                .else_('01')
+                .end()
+            )
             
-            # Extract year (everything after the hyphen)
+            # Extract year (everything after the hyphen)  
             year_part = col.split('-')[1]
             
             # Construct date string: YYYY-MM-01
-            return year_part.concat('-').concat(month_num).concat('-01')
+            return year_part + '-' + month_num + '-01'
             
         elif format_type == 'YYYY-MM':
             # Convert "2014-12" to "2014-12-01"  
-            return col.concat('-01')
+            return col + '-01'
             
         elif format_type == 'MM-YYYY':
             # Convert "12-2014" to "2014-12-01"
             month_part = col.split('-')[0]
             year_part = col.split('-')[1] 
-            return year_part.concat('-').concat(month_part).concat('-01')
+            return year_part + '-' + month_part + '-01'
             
         return col
 
