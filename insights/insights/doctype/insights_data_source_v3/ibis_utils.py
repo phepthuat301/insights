@@ -376,7 +376,7 @@ class IbisQueryBuilder:
         return self.query.drop(*to_remove)
 
     def apply_cast(self, cast_args):
-        console.log(cast_args)
+        print(f"DEBUG: cast_args = {cast_args}")
         col_name = self.get_column(cast_args.column.column_name).get_name()
         col = self.get_column(cast_args.column.column_name)
         dtype = self.get_ibis_dtype(cast_args.data_type)
