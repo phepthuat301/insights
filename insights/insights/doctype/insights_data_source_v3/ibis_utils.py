@@ -376,7 +376,6 @@ class IbisQueryBuilder:
         return self.query.drop(*to_remove)
 
     def apply_cast(self, cast_args):
-        print(f"DEBUG: cast_args = {cast_args}")
         col_name = self.get_column(cast_args.column.column_name).get_name()
         col = self.get_column(cast_args.column.column_name)
         dtype = self.get_ibis_dtype(cast_args.data_type)
@@ -385,27 +384,42 @@ class IbisQueryBuilder:
         if cast_args.data_type in ['Date', 'Datetime', 'Time']:
             # Sample a few values to detect the format first
             sample_values = self._sample_column_values(col_name)
-            print(f"DEBUG: sample_values = {sample_values}")
             detected_format = self._detect_date_format(sample_values)
-            print(f"DEBUG: detected_format = {detected_format}")
             
             if detected_format:
                 try:
                     # Convert the format and then cast
-                    print(f"DEBUG: Converting format {detected_format}")
                     converted_col = self._convert_date_format(col, detected_format)
                     return self.query.mutate(**{col_name: converted_col.cast(dtype)})
-                except Exception as e:
-                    print(f"DEBUG: Format conversion failed: {e}")
+                except Exception:
                     # If format conversion fails, try direct cast
                     pass
             
             # If no format detected or conversion failed, try direct casting
             try:
-                print("DEBUG: Trying direct cast")
                 return self.query.cast({col_name: dtype})
             except Exception as e:
-                print(f"DEBUG: Direct cast failed: {e}")
+                raise e
+        
+        # For numeric casting from string, handle common formats (commas, percentages)
+        elif cast_args.data_type in ['Integer', 'Decimal']:
+            # Sample a few values to detect numeric format
+            sample_values = self._sample_column_values(col_name)
+            detected_format = self._detect_numeric_format(sample_values)
+            
+            if detected_format:
+                try:
+                    # Convert the format and then cast
+                    converted_col = self._convert_numeric_format(col, detected_format)
+                    return self.query.mutate(**{col_name: converted_col.cast(dtype)})
+                except Exception:
+                    # If format conversion fails, try direct cast
+                    pass
+            
+            # If no format detected or conversion failed, try direct casting
+            try:
+                return self.query.cast({col_name: dtype})
+            except Exception as e:
                 raise e
         
         return self.query.cast({col_name: dtype})
@@ -449,6 +463,41 @@ class IbisQueryBuilder:
             return 'MM-YYYY'
             
         return None
+    
+    def _detect_numeric_format(self, sample_values):
+        """Detect common numeric formats from sample values"""
+        if not sample_values:
+            return None
+            
+        import re
+        
+        # Check for numbers with commas (e.g., "1,400", "2,500")
+        comma_number_pattern = r'^\d{1,3}(,\d{3})*(\.\d+)?$'
+        if any(re.match(comma_number_pattern, str(val)) for val in sample_values):
+            return 'COMMA_NUMBER'
+            
+        # Check for percentages (e.g., "0.1%", "3%", "25.5%")
+        percentage_pattern = r'^\d+(\.\d+)?%$'
+        if any(re.match(percentage_pattern, str(val)) for val in sample_values):
+            return 'PERCENTAGE'
+            
+        return None
+    
+    def _convert_numeric_format(self, col, format_type):
+        """Convert column values from detected numeric format to standard numeric format"""
+        if format_type == 'COMMA_NUMBER':
+            # Convert "1,400" to "1400"
+            # Remove all commas
+            return col.replace(',', '')
+            
+        elif format_type == 'PERCENTAGE':
+            # Convert "3%" to "0.03" and "0.1%" to "0.001"
+            # Remove % and divide by 100
+            numeric_part = col.replace('%', '')
+            # Cast to float, divide by 100, then back to string for further casting
+            return (numeric_part.cast('float64') / 100).cast('string')
+            
+        return col
     
     def _convert_date_format(self, col, format_type):
         """Convert column values from detected format to standard date format"""
