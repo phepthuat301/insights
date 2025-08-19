@@ -96,17 +96,31 @@ Generate a valid SQL query that answers this question. Return only the SQL query
 SQL Query:
 """
     
+    def _get_api_key(self) -> str | None:
+        """Return decrypted API key for the configured provider.
+
+        Password fields in Frappe are stored encrypted and should be
+        accessed via `get_password`. If unavailable, fall back to direct attr.
+        """
+        if not self.settings:
+            return None
+        # Frappe Document exposes get_password for password fields
+        try:
+            return self.settings.get_password("api_key")
+        except Exception:
+            return getattr(self.settings, "api_key", None)
+
     def _call_ai_service(self, prompt: str) -> str:
         """Call AI service (OpenAI, Anthropic, etc.)"""
-        print(f"DEBUG: self.settings = {self.settings}")
-        if not self.settings.api_key:
-            return "SELECT 1"  # Fallback query
+        api_key = self._get_api_key()
+        if not api_key:
+            return "SELECT 1"  # Fallback query when key is missing
         
         try:
             if self.settings.ai_provider == "OpenAI":
-                return self._call_openai(prompt)
+                return self._call_openai(prompt, api_key)
             elif self.settings.ai_provider == "Anthropic":
-                return self._call_anthropic(prompt)
+                return self._call_anthropic(prompt, api_key)
             else:
                 return self._call_local_llm(prompt)
         except Exception as e:
@@ -114,12 +128,12 @@ SQL Query:
             frappe.log_error(f"AI Service Error: {error_msg}")
             return "SELECT 1"  # Fallback query
     
-    def _call_openai(self, prompt: str) -> str:
+    def _call_openai(self, prompt: str, api_key: str) -> str:
         """Call OpenAI API"""
         try:
             from openai import OpenAI
             
-            client = OpenAI(api_key=self.settings.api_key)
+            client = OpenAI(api_key=api_key)
             
             response = client.chat.completions.create(
                 model=self.settings.model_name or "gpt-3.5-turbo",
@@ -140,12 +154,12 @@ SQL Query:
             frappe.log_error(f"OpenAI API Error: {error_msg}")
             return "SELECT 1"
     
-    def _call_anthropic(self, prompt: str) -> str:
+    def _call_anthropic(self, prompt: str, api_key: str) -> str:
         """Call Anthropic API"""
         try:
             import anthropic
             
-            client = anthropic.Anthropic(api_key=self.settings.api_key)
+            client = anthropic.Anthropic(api_key=api_key)
             
             response = client.messages.create(
                 model=self.settings.model_name or "claude-3-sonnet-20240229",
