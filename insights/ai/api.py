@@ -38,9 +38,41 @@ def generate_sql_from_query(natural_query: str, query_name: str):
     """
     try:
         ai_builder = AIQueryBuilder()
-        # Load the query to get its data source
+        # Load the query to get its data source via operations
         query_doc = frappe.get_doc("Insights Query v3", query_name)
-        data_source = getattr(query_doc, "data_source", None)
+
+        def resolve_data_source_from_query(qdoc) -> str | None:
+            ops = frappe.parse_json(getattr(qdoc, "operations", [])) or []
+            # Prefer explicit SQL operation's data_source
+            for op in ops:
+                if op.get("type") == "sql" and op.get("data_source"):
+                    return op.get("data_source")
+            # Look for source operation
+            for op in ops:
+                if op.get("type") != "source":
+                    continue
+                table = op.get("table") or {}
+                if table.get("type") == "table" and table.get("table_name"):
+                    # Try to fetch table doc and its data_source (or parent)
+                    tbl = frappe.get_all(
+                        "Insights Table",
+                        filters={"table": table.get("table_name")},
+                        fields=["name", "data_source", "parent"],
+                        limit=1,
+                    )
+                    if tbl:
+                        return tbl[0].get("data_source") or tbl[0].get("parent")
+                if table.get("type") == "query" and table.get("query_name"):
+                    try:
+                        ref = frappe.get_doc("Insights Query v3", table.get("query_name"))
+                        ds = resolve_data_source_from_query(ref)
+                        if ds:
+                            return ds
+                    except Exception:
+                        pass
+            return None
+
+        data_source = resolve_data_source_from_query(query_doc)
         result = ai_builder.natural_to_sql(natural_query, data_source)
 
         if "error" in result:
