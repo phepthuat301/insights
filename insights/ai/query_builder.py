@@ -113,6 +113,7 @@ SQL Query:
     def _call_ai_service(self, prompt: str) -> str:
         """Call AI service (OpenAI, Anthropic, etc.)"""
         api_key = self._get_api_key()
+        print(f"DEBUG: api_key = {api_key}")
         if not api_key:
             return "SELECT 1"  # Fallback query when key is missing
         
