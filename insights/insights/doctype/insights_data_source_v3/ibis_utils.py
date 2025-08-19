@@ -377,8 +377,104 @@ class IbisQueryBuilder:
 
     def apply_cast(self, cast_args):
         col_name = self.get_column(cast_args.column.column_name).get_name()
+        col = self.get_column(cast_args.column.column_name)
         dtype = self.get_ibis_dtype(cast_args.data_type)
+        
+        # For date/time casting from string, handle common formats intelligently
+        if cast_args.data_type in ['Date', 'Datetime', 'Time']:
+            try:
+                # First try direct casting
+                return self.query.cast({col_name: dtype})
+            except Exception:
+                try:
+                    # If direct casting fails, try to handle common date formats
+                    if cast_args.data_type in ['Date', 'Datetime']:
+                        # Sample a few values to detect the format
+                        sample_values = self._sample_column_values(col_name)
+                        detected_format = self._detect_date_format(sample_values)
+                        
+                        if detected_format:
+                            # Convert the format and then cast
+                            converted_col = self._convert_date_format(col, detected_format)
+                            return self.query.mutate(**{col_name: converted_col.cast(dtype)})
+                    
+                    # If format detection fails, fall back to direct cast
+                    return self.query.cast({col_name: dtype})
+                except Exception:
+                    # If all else fails, try direct cast anyway (might still work)
+                    return self.query.cast({col_name: dtype})
+        
         return self.query.cast({col_name: dtype})
+    
+    def _sample_column_values(self, col_name, limit=5):
+        """Sample a few values from the column to detect format"""
+        try:
+            import pandas as pd
+            sample_query = self.query.select(col_name).limit(limit)
+            result = sample_query.execute()
+            if isinstance(result, pd.DataFrame) and not result.empty:
+                return result[col_name].dropna().tolist()
+        except:
+            pass
+        return []
+    
+    def _detect_date_format(self, sample_values):
+        """Detect common date formats from sample values"""
+        if not sample_values:
+            return None
+            
+        # Check for MMM-YYYY format (e.g., "Dec-2014")
+        import re
+        mmm_yyyy_pattern = r'^[A-Za-z]{3}-\d{4}$'
+        if any(re.match(mmm_yyyy_pattern, str(val)) for val in sample_values):
+            return 'MMM-YYYY'
+            
+        # Check for YYYY-MM format (e.g., "2014-12") 
+        yyyy_mm_pattern = r'^\d{4}-\d{2}$'
+        if any(re.match(yyyy_mm_pattern, str(val)) for val in sample_values):
+            return 'YYYY-MM'
+            
+        # Check for MM-YYYY format (e.g., "12-2014")
+        mm_yyyy_pattern = r'^\d{2}-\d{4}$'
+        if any(re.match(mm_yyyy_pattern, str(val)) for val in sample_values):
+            return 'MM-YYYY'
+            
+        return None
+    
+    def _convert_date_format(self, col, format_type):
+        """Convert column values from detected format to standard date format"""
+        if format_type == 'MMM-YYYY':
+            # Convert "Dec-2014" to "2014-12-01"
+            # Use CASE statement to convert month names to numbers
+            month_map = {
+                'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+                'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08', 
+                'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+            }
+            
+            # Build a case expression for month conversion
+            case_expr = col.case()
+            for month_name, month_num in month_map.items():
+                case_expr = case_expr.when(col.contains(month_name), month_num)
+            month_num = case_expr.else_('01').end()
+            
+            # Extract year (everything after the hyphen)
+            year_part = col.split('-')[1]
+            
+            # Construct date string: YYYY-MM-01
+            return year_part.concat('-').concat(month_num).concat('-01')
+            
+        elif format_type == 'YYYY-MM':
+            # Convert "2014-12" to "2014-12-01"  
+            return col.concat('-01')
+            
+        elif format_type == 'MM-YYYY':
+            # Convert "12-2014" to "2014-12-01"
+            month_part = col.split('-')[0]
+            year_part = col.split('-')[1] 
+            return year_part.concat('-').concat(month_part).concat('-01')
+            
+        return col
 
     def get_ibis_dtype(self, data_type):
         return {
