@@ -3,11 +3,13 @@ import { watchDebounced } from '@vueuse/core'
 import { Breadcrumbs, ListView, FormControl, Button, Dropdown } from 'frappe-ui'
 import { MoreHorizontal, RefreshCcw, SearchIcon, Trash2 } from 'lucide-vue-next'
 import { h, ref, watchEffect } from 'vue'
+import { useRouter } from 'vue-router'
 import useDataSourceStore from './data_source'
 import useTableStore, { DataSourceTable } from './tables'
 import { confirmDialog } from '../helpers/confirm_dialog'
 
 const props = defineProps<{ name: string }>()
+const router = useRouter()
 
 const dataSource = useDataSourceStore().getSource(props.name)
 const tableStore = useTableStore()
@@ -75,8 +77,8 @@ const handleDeleteDataSource = async () => {
 		onSuccess: async () => {
 			try {
 				await dataSourceStore.deleteDataSource(props.name)
-				// Redirect to data source list after deletion
-				window.location.href = '/data-source'
+				// Navigate to data source list after deletion
+				router.push('/data-source')
 			} catch (error) {
 				console.error('Error deleting data source:', error)
 			}
