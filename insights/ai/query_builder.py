@@ -108,13 +108,11 @@ SQL Query:
     def _call_ai_service(self, prompt: str) -> str:
         """Call AI service (OpenAI, Anthropic, etc.)"""
         api_key = self._get_api_key()
-        print(f"DEBUG: api_key = {api_key}")
         if not api_key:
             return "SELECT 1"  # Fallback query when key is missing
         
         try:
             if self.settings.ai_provider == "OpenAI":
-                print(f"DEBUG: calling openai", prompt)
                 return self._call_openai(prompt, api_key)
             elif self.settings.ai_provider == "Anthropic":
                 return self._call_anthropic(prompt, api_key)
@@ -122,19 +120,30 @@ SQL Query:
                 return self._call_local_llm(prompt)
         except Exception as e:
             error_msg = str(e)[:100]  # Truncate to avoid length issues
-            print(f"DEBUG: error_msg = {error_msg}")
             frappe.log_error(f"AI Service Error: {error_msg}")
             return "SELECT 1"  # Fallback query
     
+    def _normalize_openai_model(self, name: str | None) -> str:
+        if not name:
+            return "gpt-3.5-turbo"
+        mapping = {
+            "gpt-3.5": "gpt-3.5-turbo",
+            "gpt3.5": "gpt-3.5-turbo",
+            "gpt-4": "gpt-4o",
+            "gpt4": "gpt-4o",
+            "gpt-4o-mini": "gpt-4o-mini",
+        }
+        return mapping.get(name.strip(), name.strip())
+
     def _call_openai(self, prompt: str, api_key: str) -> str:
         """Call OpenAI API"""
         try:
             from openai import OpenAI
             
             client = OpenAI(api_key=api_key)
-            
+            model = self._normalize_openai_model(getattr(self.settings, "model_name", None))
             response = client.chat.completions.create(
-                model=self.settings.model_name or "gpt-3.5-turbo",
+                model=model or "gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "You are an expert SQL query generator. Return only valid SQL queries."},
                     {"role": "user", "content": prompt}
@@ -148,6 +157,22 @@ SQL Query:
         except ImportError:
             frappe.throw("OpenAI library not installed. Run: pip install openai")
         except Exception as e:
+            # Try a safe fallback model once
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=api_key)
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are an expert SQL query generator. Return only valid SQL queries."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=self.settings.max_tokens or 1000,
+                    temperature=self.settings.temperature or 0.7
+                )
+                return response.choices[0].message.content.strip()
+            except Exception:
+                pass
             error_msg = str(e)[:100]  # Truncate to avoid length issues
             frappe.log_error(f"OpenAI API Error: {error_msg}")
             return "SELECT 1"
