@@ -179,9 +179,9 @@ before_tests = "insights.tests.utils.before_tests"
 # Overriding Methods
 # ------------------------------
 #
-# override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "insights.event.get_events"
-# }
+override_whitelisted_methods = {
+    "frappe.client.save": "insights.insights.doctype.user.user_save.save_user_with_default_password"
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
