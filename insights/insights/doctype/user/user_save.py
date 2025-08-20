@@ -24,8 +24,9 @@ def save_user_with_default_password(doc, action):
         # If it's a new user, set default password
         if is_new:
             default_password = "Welcome123!"
-            # Use the correct method to set password
-            frappe.call("frappe.core.doctype.user.user.reset_password", user_doc.name, default_password)
+            # Set password using the user document method
+            user_doc.new_password = default_password
+            user_doc.save()
             
             # Log the default password
             frappe.logger().info(f"Default password set for new user {user_doc.name}: {default_password}")
