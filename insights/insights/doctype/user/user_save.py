@@ -2,9 +2,10 @@ import frappe
 from frappe import _
 
 @frappe.whitelist()
-def save_user_with_default_password(doc):
+def save_user_with_default_password(doc, action):
     """Custom save method that sets default password for new users"""
     try:
+        print("save_user_with_default_password")
         # Parse the document
         if isinstance(doc, str):
             doc = frappe.parse_json(doc)

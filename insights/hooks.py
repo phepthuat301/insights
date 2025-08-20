@@ -180,7 +180,7 @@ before_tests = "insights.tests.utils.before_tests"
 # ------------------------------
 #
 override_whitelisted_methods = {
-    "frappe.client.save": "insights.insights.doctype.user.user_save.save_user_with_default_password"
+    "frappe.desk.form.save.savedocs": "insights.insights.doctype.user.user_save.save_user_with_default_password"
 }
 #
 # each overriding function accepts a `data` argument;
