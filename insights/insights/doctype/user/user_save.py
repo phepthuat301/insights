@@ -13,6 +13,10 @@ def save_user_with_default_password(doc, action):
         # Check if this is a new user
         is_new = doc.get("__islocal") or not frappe.db.exists("User", doc.get("name"))
         
+        # Disable welcome email to avoid email configuration issues
+        if is_new:
+            doc["send_welcome_email"] = 0
+        
         # Save the user first
         user_doc = frappe.get_doc(doc)
         user_doc.save()
