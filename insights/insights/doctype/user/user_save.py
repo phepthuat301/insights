@@ -23,7 +23,7 @@ def save_user_with_default_password(doc, action):
         
         # If it's a new user, set default password
         if is_new:
-            default_password = "Welcome123!"
+            default_password = "Insights2024!Secure"
             # Set password using the user document method
             user_doc.new_password = default_password
             user_doc.save()
