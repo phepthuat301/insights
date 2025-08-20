@@ -24,10 +24,14 @@ const { width } = useWindowSize()
 const isMobile = computed(() => width.value < 1058)
 
 watchEffect(() => {
+	// Disable auto-save during editing or on mobile
+	// Manual save is now handled by the Done button
 	if (dashboard.editing || isMobile.value) {
 		dashboard.autoSave = false
 	} else {
-		dashboard.autoSave = true
+		// Keep auto-save disabled even when not editing
+		// since we're using manual save via Done button
+		dashboard.autoSave = false
 	}
 })
 
@@ -124,7 +128,11 @@ const showShareDialog = ref(false)
 						v-if="dashboard.editing"
 						variant="solid"
 						icon-left="check"
-						@click="dashboard.editing = false"
+						@click="async () => {
+							await dashboard.save()
+							dashboard.editing = false
+						}"
+						:loading="dashboard.saving"
 					>
 						Done
 					</Button>
