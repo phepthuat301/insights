@@ -121,9 +121,18 @@ const loadAvailableColumns = async () => {
 watch(() => dashboard.doc.items, loadAvailableColumns, { immediate: true })
 
 const addFilter = () => {
+	// Auto-select Time column for all filters
+	const timeColumn = {
+		query: 'i3k6clg0vd', // You can update this to match your actual query name
+		column: 'Time',
+		column_name: 'Time',
+		label: 'Time',
+		type: 'Date'
+	}
+	
 	dashboardFilters.value.push({
-		column: null,
-		operator: null,
+		column: timeColumn,
+		operator: { value: 'between', label: 'between' }, // Auto-select between operator
 		value: null
 	})
 }
@@ -288,79 +297,35 @@ onUnmounted(() => {
 					:key="index"
 					class="flex items-center gap-2 p-3 border rounded bg-gray-50"
 				>
-					<!-- Column Selection -->
+					<!-- Column Selection (Hardcoded to Time) -->
 					<div class="flex-1">
-						<Dropdown
-							:options="availableColumns.map(col => ({
-								label: `${col.label} (${col.query})`,
-								value: col,
-								onClick: () => {
-									console.log('Selected column:', col)
-									filter.column = col
-									filter.operator = null
-									filter.value = null
-								}
-							}))"
-							:button="{
-								label: filter.column ? `${filter.column.label} (${filter.column.query})` : 'Select Column',
-								variant: 'outline'
-							}"
-						/>
+						<div class="px-3 py-2 border rounded bg-gray-100 text-gray-700 text-sm">
+							<div class="flex items-center gap-2">
+								<FeatherIcon name="calendar" class="h-4 w-4" />
+								<span>Time (Date Filter)</span>
+							</div>
+						</div>
 						<div class="text-xs text-gray-500 mt-1">
-							{{ availableColumns.length }} columns available
+							Fixed to Time column
 						</div>
 					</div>
 
-					<!-- Operator Selection -->
-					<div v-if="filter.column" class="flex-1">
-						<Dropdown
-							:options="getOperatorOptions(filter.column.type).map(op => ({
-								label: op.label,
-								value: op,
-								onClick: () => {
-									console.log('Selected operator:', op)
-									filter.operator = op
-									filter.value = null
-								}
-							}))"
-							:button="{
-								label: filter.operator ? filter.operator.label : 'Select Operator',
-								variant: 'outline'
-							}"
-						/>
+					<!-- Operator Selection (Fixed to Between) -->
+					<div class="flex-1">
+						<div class="px-3 py-2 border rounded bg-gray-100 text-gray-700 text-sm">
+							<div class="flex items-center gap-2">
+								<FeatherIcon name="calendar" class="h-4 w-4" />
+								<span>between</span>
+							</div>
+						</div>
+						<div class="text-xs text-gray-500 mt-1">
+							Date range filter
+						</div>
 					</div>
 
-					<!-- Value Input -->
-					<div v-if="filter.operator" class="flex-1">
-						<!-- Single Value Input -->
-						<FormControl
-							v-if="['=', '!=', 'like', '>', '<', '>=', '<='].includes(filter.operator.value)"
-							:model-value="filter.value?.value || ''"
-							@update:model-value="(val) => {
-								filter.value = { value: val, label: val }
-								applyFilters()
-							}"
-							:placeholder="['Date', 'Datetime'].includes(filter.column?.type || '') ? 'YYYY-MM-DD' : 'Enter value'"
-							:type="['Date', 'Datetime'].includes(filter.column?.type || '') ? 'date' : 'text'"
-						/>
-						
-						<!-- Multiple Values Input -->
-						<FormControl
-							v-else-if="['in', 'not_in'].includes(filter.operator.value)"
-							:model-value="filter.value?.value || ''"
-							@update:model-value="(val) => {
-								const values = val.split(',').map(v => v.trim()).filter(Boolean)
-								filter.value = { value: values, label: val }
-								applyFilters()
-							}"
-							placeholder="Enter values separated by comma"
-						/>
-						
-						<!-- Date Range Input for Between -->
-						<div 
-							v-else-if="filter.operator.value === 'between' && ['Date', 'Datetime'].includes(filter.column?.type || '')"
-							class="flex items-center gap-2"
-						>
+					<!-- Date Range Input (Always Between for Time) -->
+					<div class="flex-2">
+						<div class="flex items-center gap-2">
 							<FormControl
 								:model-value="filter.value?.startDate || ''"
 								@update:model-value="(val) => {
@@ -378,7 +343,7 @@ onUnmounted(() => {
 								placeholder="Start date"
 								class="flex-1"
 							/>
-							<span class="text-gray-500 text-sm">to</span>
+							<span class="text-gray-500 text-sm font-medium">to</span>
 							<FormControl
 								:model-value="filter.value?.endDate || ''"
 								@update:model-value="(val) => {
@@ -397,47 +362,8 @@ onUnmounted(() => {
 								class="flex-1"
 							/>
 						</div>
-						
-						<!-- Regular Between Input for Numbers -->
-						<div 
-							v-else-if="filter.operator.value === 'between' && !['Date', 'Datetime'].includes(filter.column?.type || '')"
-							class="flex items-center gap-2"
-						>
-							<FormControl
-								:model-value="filter.value?.startValue || ''"
-								@update:model-value="(val) => {
-									const endValue = filter.value?.endValue || ''
-									const range = val && endValue ? [val, endValue] : [val, val]
-									filter.value = { 
-										value: range,
-										startValue: val,
-										endValue: endValue,
-										label: val && endValue ? `${val} to ${endValue}` : val
-									}
-									if (val && endValue) applyFilters()
-								}"
-								type="number"
-								placeholder="Min value"
-								class="flex-1"
-							/>
-							<span class="text-gray-500 text-sm">to</span>
-							<FormControl
-								:model-value="filter.value?.endValue || ''"
-								@update:model-value="(val) => {
-									const startValue = filter.value?.startValue || ''
-									const range = startValue && val ? [startValue, val] : [startValue, val]
-									filter.value = { 
-										value: range,
-										startValue: startValue,
-										endValue: val,
-										label: startValue && val ? `${startValue} to ${val}` : val
-									}
-									if (startValue && val) applyFilters()
-								}"
-								type="number"
-								placeholder="Max value"
-								class="flex-1"
-							/>
+						<div class="text-xs text-gray-500 mt-1">
+							Select date range to filter all charts
 						</div>
 					</div>
 
