@@ -275,6 +275,7 @@ onUnmounted(() => {
 
 					<!-- Value Input -->
 					<div v-if="filter.operator" class="flex-1">
+						<!-- Single Value Input -->
 						<FormControl
 							v-if="['=', '!=', 'like', '>', '<', '>=', '<='].includes(filter.operator.value)"
 							:model-value="filter.value?.value || ''"
@@ -282,8 +283,11 @@ onUnmounted(() => {
 								filter.value = { value: val, label: val }
 								applyFilters()
 							}"
-							placeholder="Enter value"
+							:placeholder="['Date', 'Datetime'].includes(filter.column?.type || '') ? 'YYYY-MM-DD' : 'Enter value'"
+							:type="['Date', 'Datetime'].includes(filter.column?.type || '') ? 'date' : 'text'"
 						/>
+						
+						<!-- Multiple Values Input -->
 						<FormControl
 							v-else-if="['in', 'not_in'].includes(filter.operator.value)"
 							:model-value="filter.value?.value || ''"
@@ -294,15 +298,90 @@ onUnmounted(() => {
 							}"
 							placeholder="Enter values separated by comma"
 						/>
-						<FormControl
-							v-else-if="filter.operator.value === 'between' && ['Date', 'Datetime'].includes(filter.column.type)"
-							:model-value="filter.value?.value || ''"
-							@update:model-value="(val) => {
-								filter.value = { value: val, label: val }
-								applyFilters()
-							}"
-							type="date"
-						/>
+						
+						<!-- Date Range Input for Between -->
+						<div 
+							v-else-if="filter.operator.value === 'between' && ['Date', 'Datetime'].includes(filter.column?.type || '')"
+							class="flex items-center gap-2"
+						>
+							<FormControl
+								:model-value="filter.value?.startDate || ''"
+								@update:model-value="(val) => {
+									const endDate = filter.value?.endDate || ''
+									const dateRange = val && endDate ? [val, endDate] : [val, val]
+									filter.value = { 
+										value: dateRange,
+										startDate: val,
+										endDate: endDate,
+										label: val && endDate ? `${val} to ${endDate}` : val
+									}
+									if (val && endDate) applyFilters()
+								}"
+								type="date"
+								placeholder="Start date"
+								class="flex-1"
+							/>
+							<span class="text-gray-500 text-sm">to</span>
+							<FormControl
+								:model-value="filter.value?.endDate || ''"
+								@update:model-value="(val) => {
+									const startDate = filter.value?.startDate || ''
+									const dateRange = startDate && val ? [startDate, val] : [startDate, val]
+									filter.value = { 
+										value: dateRange,
+										startDate: startDate,
+										endDate: val,
+										label: startDate && val ? `${startDate} to ${val}` : val
+									}
+									if (startDate && val) applyFilters()
+								}"
+								type="date"
+								placeholder="End date"
+								class="flex-1"
+							/>
+						</div>
+						
+						<!-- Regular Between Input for Numbers -->
+						<div 
+							v-else-if="filter.operator.value === 'between' && !['Date', 'Datetime'].includes(filter.column?.type || '')"
+							class="flex items-center gap-2"
+						>
+							<FormControl
+								:model-value="filter.value?.startValue || ''"
+								@update:model-value="(val) => {
+									const endValue = filter.value?.endValue || ''
+									const range = val && endValue ? [val, endValue] : [val, val]
+									filter.value = { 
+										value: range,
+										startValue: val,
+										endValue: endValue,
+										label: val && endValue ? `${val} to ${endValue}` : val
+									}
+									if (val && endValue) applyFilters()
+								}"
+								type="number"
+								placeholder="Min value"
+								class="flex-1"
+							/>
+							<span class="text-gray-500 text-sm">to</span>
+							<FormControl
+								:model-value="filter.value?.endValue || ''"
+								@update:model-value="(val) => {
+									const startValue = filter.value?.startValue || ''
+									const range = startValue && val ? [startValue, val] : [startValue, val]
+									filter.value = { 
+										value: range,
+										startValue: startValue,
+										endValue: val,
+										label: startValue && val ? `${startValue} to ${val}` : val
+									}
+									if (startValue && val) applyFilters()
+								}"
+								type="number"
+								placeholder="Max value"
+								class="flex-1"
+							/>
+						</div>
 					</div>
 
 					<!-- Remove Button -->
