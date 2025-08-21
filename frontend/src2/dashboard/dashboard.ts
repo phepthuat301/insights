@@ -51,6 +51,7 @@ function makeDashboard(name: string) {
 
 	const filters = ref<Record<string, FilterArgs[]>>({})
 	const filterStates = ref<Record<string, FilterState>>({})
+	const globalFilters = ref<any[]>([])
 
 	function addChart(charts: WorkbookChart[]) {
 		const maxY = getMaxY()
@@ -163,12 +164,6 @@ function makeDashboard(name: string) {
 	}
 
 	function getAdhocFilters(chart_name: string) {
-		const filtersApplied = dashboard.doc.items.filter(
-			(item) => item.type === 'filter' && 'links' in item && item.links[chart_name]
-		)
-
-		if (filtersApplied.length === 0) return
-
 		const filtersByQuery = {} as Record<string, FilterGroup>
 
 		function addFilterToQuery(query_name: string, filter: FilterArgs) {
@@ -180,6 +175,23 @@ function makeDashboard(name: string) {
 			}
 			filtersByQuery[query_name].filters.push(filter)
 		}
+
+		// Add global dashboard filters
+		globalFilters.value.forEach((globalFilter) => {
+			if (globalFilter.column?.query && globalFilter.operator?.value && globalFilter.value?.value) {
+				const filter = {
+					column: column(globalFilter.column.column),
+					operator: globalFilter.operator.value,
+					value: globalFilter.value.value,
+				}
+				addFilterToQuery(globalFilter.column.query, filter)
+			}
+		})
+
+		// Add item-specific filters (existing functionality)
+		const filtersApplied = dashboard.doc.items.filter(
+			(item) => item.type === 'filter' && 'links' in item && item.links[chart_name]
+		)
 
 		filtersApplied.forEach((item) => {
 			const filterItem = item as WorkbookDashboardFilter
@@ -198,7 +210,8 @@ function makeDashboard(name: string) {
 				addFilterToQuery(linkedColumn.query, filter)
 			}
 		})
-		return filtersByQuery
+
+		return Object.keys(filtersByQuery).length > 0 ? filtersByQuery : undefined
 	}
 
 	function updateFilterState(filter_name: string, operator?: FilterOperator, value?: FilterValue) {
@@ -271,6 +284,14 @@ function makeDashboard(name: string) {
 			.then(() => dashboard.load())
 	}
 
+	function setGlobalFilters(filters: any[]) {
+		globalFilters.value = filters
+	}
+
+	function clearGlobalFilters() {
+		globalFilters.value = []
+	}
+
 
 	const defaultFilters = dashboard.doc.items.reduce((acc, item) => {
 		if (item.type != 'filter') return acc
@@ -336,6 +357,8 @@ function makeDashboard(name: string) {
 		updateAccess,
 
 		getShareLink,
+		setGlobalFilters,
+		clearGlobalFilters,
 	})
 }
 

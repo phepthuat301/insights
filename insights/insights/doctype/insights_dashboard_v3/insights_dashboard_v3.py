@@ -3,6 +3,7 @@
 
 import re
 from contextlib import contextmanager
+from typing import TYPE_CHECKING
 
 import frappe
 import requests
@@ -110,6 +111,92 @@ class InsightsDashboardv3(Document):
                     return True
 
         raise frappe.PermissionError
+
+    @frappe.whitelist()
+    def fetch_chart_data(self, chart_name, dashboard_filters=None):
+        """
+        Fetch chart data with optional dashboard-level filters applied.
+        
+        Args:
+            chart_name: Name of the chart to fetch data for
+            dashboard_filters: Dictionary of filters to apply at dashboard level
+        
+        Returns:
+            Chart data with filters applied
+        """
+        is_guest = frappe.session.user == "Guest"
+        if is_guest and not self.is_public:
+            raise frappe.PermissionError("Dashboard is not public")
+
+        # Get chart document
+        chart = frappe.get_cached_doc("Insights Chart v3", chart_name)
+        
+        # Check if chart belongs to the same workbook as this dashboard
+        if chart.workbook != self.workbook:
+            raise frappe.PermissionError("Chart does not belong to this dashboard's workbook")
+
+        # Get the query name from the chart
+        query_name = chart.query or chart.data_query
+        if not query_name:
+            frappe.throw("No query found for this chart")
+
+        # Convert dashboard filters to adhoc filters format
+        adhoc_filters = self._convert_dashboard_filters_to_adhoc(dashboard_filters)
+        
+        # Execute the query with filters
+        query_doc = frappe.get_cached_doc("Insights Query v3", query_name)
+        return query_doc.execute(adhoc_filters=adhoc_filters)
+
+    def _convert_dashboard_filters_to_adhoc(self, dashboard_filters):
+        """
+        Convert dashboard-level filters to the adhoc filters format expected by queries.
+        
+        Args:
+            dashboard_filters: List of filter objects from dashboard
+        
+        Returns:
+            Dictionary in adhoc filters format
+        """
+        if not dashboard_filters:
+            return {}
+
+        adhoc_filters = {}
+        
+        for filter_obj in dashboard_filters:
+            # Extract filter details
+            column = filter_obj.get("column", {})
+            operator = filter_obj.get("operator", {})
+            value = filter_obj.get("value", {})
+            
+            if not all([column, operator, value]):
+                continue
+                
+            # Get the query name from column reference
+            query_name = column.get("query")
+            if not query_name:
+                continue
+                
+            # Initialize query filters if not exists
+            if query_name not in adhoc_filters:
+                adhoc_filters[query_name] = {
+                    "type": "filter_group",
+                    "filters": [],
+                    "logical_operator": "And"
+                }
+            
+            # Add filter to the query's filter group
+            filter_condition = {
+                "column": {
+                    "column_name": column.get("column_name"),
+                    "type": "column"
+                },
+                "operator": operator.get("value"),
+                "value": value.get("value")
+            }
+            
+            adhoc_filters[query_name]["filters"].append(filter_condition)
+        
+        return adhoc_filters
 
     def enqueue_update_dashboard_preview(self):
         if self.is_new() or not self.get_doc_before_save() or frappe.flags.in_patch:

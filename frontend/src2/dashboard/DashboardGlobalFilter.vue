@@ -1,0 +1,366 @@
+<script setup lang="ts">
+import { computed, inject, reactive, ref, watch } from 'vue'
+import { call } from 'frappe-ui'
+import { FilterOperator, FilterValue } from '../types/query.types'
+import { Dashboard } from './dashboard'
+
+interface DashboardFilter {
+	column: {
+		query: string
+		column: string
+		label: string
+		type: string
+	} | null
+	operator: {
+		value: string
+		label: string
+	} | null
+	value: {
+		value: any
+		label: string
+	} | null
+}
+
+const dashboard = inject<Dashboard>('dashboard')!
+const emit = defineEmits<{
+	'filter-applied': [filters: any[]]
+	'filter-reset': []
+}>()
+
+// Global dashboard filters state
+const dashboardFilters = ref<DashboardFilter[]>([])
+const isOpen = ref(false)
+
+// Available columns for filtering (from all queries in the dashboard)
+const availableColumns = ref<Array<{
+	query: string
+	column: string
+	label: string
+	type: string
+}>>([])
+
+// Load available columns from dashboard charts
+const loadAvailableColumns = async () => {
+	if (!dashboard.doc.items) return
+	
+	const chartItems = dashboard.doc.items.filter(item => item.type === 'chart')
+	const queryNames = new Set<string>()
+	
+	// Get unique query names from charts
+	for (const item of chartItems) {
+		try {
+			// Call the chart to get its query name
+			const chartDoc = await call('frappe.client.get_doc', {
+				doctype: 'Insights Chart v3',
+				name: item.chart
+			})
+			if (chartDoc.query || chartDoc.data_query) {
+				queryNames.add(chartDoc.query || chartDoc.data_query)
+			}
+		} catch (error) {
+			console.warn('Failed to load chart:', item.chart, error)
+		}
+	}
+	
+	// Get columns for each query
+	const columns: typeof availableColumns.value = []
+	for (const queryName of queryNames) {
+		try {
+			const queryDoc = await call('frappe.client.get_doc', {
+				doctype: 'Insights Query v3', 
+				name: queryName
+			})
+			
+			// Parse operations to get available columns
+			const operations = JSON.parse(queryDoc.operations || '[]')
+			const sourceOp = operations.find((op: any) => op.type === 'source')
+			
+			if (sourceOp?.table?.query_name) {
+				// Get columns from the source query
+				const sourceQuery = await call('frappe.client.get_doc', {
+					doctype: 'Insights Query v3',
+					name: sourceOp.table.query_name
+				})
+				const sourceOps = JSON.parse(sourceQuery.operations || '[]')
+				const summarizeOp = sourceOps.find((op: any) => op.type === 'summarize')
+				
+				if (summarizeOp?.dimensions) {
+					summarizeOp.dimensions.forEach((dim: any) => {
+						columns.push({
+							query: queryName,
+							column: dim.column_name,
+							label: dim.label || dim.column_name,
+							type: dim.data_type || 'String'
+						})
+					})
+				}
+			}
+		} catch (error) {
+			console.warn('Failed to load query columns:', queryName, error)
+		}
+	}
+	
+	availableColumns.value = columns
+}
+
+// Load columns when dashboard is ready
+watch(() => dashboard.doc.items, loadAvailableColumns, { immediate: true })
+
+const addFilter = () => {
+	dashboardFilters.value.push({
+		column: null,
+		operator: null,
+		value: null
+	})
+}
+
+const removeFilter = (index: number) => {
+	dashboardFilters.value.splice(index, 1)
+	applyFilters()
+}
+
+const applyFilters = () => {
+	const validFilters = dashboardFilters.value.filter(filter => 
+		filter.column && filter.operator && filter.value
+	)
+	
+	if (validFilters.length === 0) {
+		emit('filter-reset')
+		return
+	}
+	
+	// Convert filters to the format expected by the API
+	const apiFilters = validFilters.map(filter => ({
+		column: {
+			query: filter.column?.query,
+			column_name: filter.column?.column,
+			type: filter.column?.type
+		},
+		operator: {
+			value: filter.operator?.value,
+			label: filter.operator?.label
+		},
+		value: {
+			value: filter.value?.value,
+			label: filter.value?.label
+		}
+	}))
+	
+	emit('filter-applied', apiFilters)
+}
+
+const resetFilters = () => {
+	dashboardFilters.value = []
+	emit('filter-reset')
+}
+
+// Operator options based on column type
+const getOperatorOptions = (columnType: string) => {
+	const commonOps = [
+		{ label: 'equals', value: '=' },
+		{ label: 'not equals', value: '!=' }
+	]
+	
+	if (columnType === 'String') {
+		return [
+			...commonOps,
+			{ label: 'contains', value: 'like' },
+			{ label: 'in', value: 'in' },
+			{ label: 'not in', value: 'not_in' }
+		]
+	} else if (['Date', 'Datetime'].includes(columnType)) {
+		return [
+			...commonOps,
+			{ label: 'greater than', value: '>' },
+			{ label: 'less than', value: '<' },
+			{ label: 'between', value: 'between' }
+		]
+	} else if (['Number', 'Decimal', 'Integer'].includes(columnType)) {
+		return [
+			...commonOps,
+			{ label: 'greater than', value: '>' },
+			{ label: 'less than', value: '<' },
+			{ label: 'greater than or equal', value: '>=' },
+			{ label: 'less than or equal', value: '<=' }
+		]
+	}
+	
+	return commonOps
+}
+
+// Get distinct values for a column
+const getColumnValues = async (column: any, searchTerm = '') => {
+	if (!column) return []
+	
+	try {
+		return await call('insights.api.dashboards.get_dashboard_filter_options', {
+			dashboard_name: dashboard.doc.name,
+			query_name: column.query,
+			column_name: column.column,
+			search_term: searchTerm
+		})
+	} catch (error) {
+		console.error('Failed to get column values:', error)
+		return []
+	}
+}
+
+const hasFilters = computed(() => dashboardFilters.value.length > 0)
+const activeFiltersCount = computed(() => 
+	dashboardFilters.value.filter(f => f.column && f.operator && f.value).length
+)
+</script>
+
+<template>
+	<div class="dashboard-global-filter">
+		<!-- Filter Toggle Button -->
+		<Button
+			v-if="!isOpen"
+			@click="isOpen = true"
+			variant="outline"
+			:label="`Filters${activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ''}`"
+		>
+			<template #prefix>
+				<FeatherIcon name="filter" class="h-4 w-4" />
+			</template>
+		</Button>
+
+		<!-- Filter Panel -->
+		<div v-if="isOpen" class="border rounded-lg bg-white p-4 mb-4 shadow-sm">
+			<div class="flex items-center justify-between mb-3">
+				<h3 class="text-sm font-medium text-gray-900">Dashboard Filters</h3>
+				<div class="flex items-center gap-2">
+					<Button
+						@click="addFilter"
+						variant="ghost"
+						size="sm"
+						label="Add Filter"
+					>
+						<template #prefix>
+							<FeatherIcon name="plus" class="h-4 w-4" />
+						</template>
+					</Button>
+					<Button
+						@click="isOpen = false"
+						variant="ghost"
+						size="sm"
+						icon="x"
+					/>
+				</div>
+			</div>
+
+			<!-- Filter List -->
+			<div v-if="hasFilters" class="space-y-3">
+				<div
+					v-for="(filter, index) in dashboardFilters"
+					:key="index"
+					class="flex items-center gap-2 p-3 border rounded bg-gray-50"
+				>
+					<!-- Column Selection -->
+					<Dropdown
+						:options="availableColumns.map(col => ({
+							label: `${col.label} (${col.query})`,
+							value: col,
+							onClick: () => {
+								filter.column = col
+								filter.operator = null
+								filter.value = null
+							}
+						}))"
+						:button="{
+							label: filter.column ? `${filter.column.label} (${filter.column.query})` : 'Select Column',
+							variant: 'outline'
+						}"
+					/>
+
+					<!-- Operator Selection -->
+					<Dropdown
+						v-if="filter.column"
+						:options="getOperatorOptions(filter.column.type).map(op => ({
+							label: op.label,
+							value: op,
+							onClick: () => {
+								filter.operator = op
+								filter.value = null
+							}
+						}))"
+						:button="{
+							label: filter.operator ? filter.operator.label : 'Select Operator',
+							variant: 'outline'
+						}"
+					/>
+
+					<!-- Value Input -->
+					<div v-if="filter.operator" class="flex-1">
+						<FormControl
+							v-if="['=', '!=', 'like', '>', '<', '>=', '<='].includes(filter.operator.value)"
+							:model-value="filter.value?.value || ''"
+							@update:model-value="(val) => {
+								filter.value = { value: val, label: val }
+								applyFilters()
+							}"
+							placeholder="Enter value"
+						/>
+						<FormControl
+							v-else-if="['in', 'not_in'].includes(filter.operator.value)"
+							:model-value="filter.value?.value || ''"
+							@update:model-value="(val) => {
+								const values = val.split(',').map(v => v.trim()).filter(Boolean)
+								filter.value = { value: values, label: val }
+								applyFilters()
+							}"
+							placeholder="Enter values separated by comma"
+						/>
+						<FormControl
+							v-else-if="filter.operator.value === 'between' && ['Date', 'Datetime'].includes(filter.column.type)"
+							:model-value="filter.value?.value || ''"
+							@update:model-value="(val) => {
+								filter.value = { value: val, label: val }
+								applyFilters()
+							}"
+							type="date"
+						/>
+					</div>
+
+					<!-- Remove Button -->
+					<Button
+						@click="removeFilter(index)"
+						variant="ghost"
+						size="sm"
+						icon="trash-2"
+						class="text-red-600 hover:text-red-700"
+					/>
+				</div>
+			</div>
+
+			<!-- Empty State -->
+			<div v-else class="text-center py-8 text-gray-500">
+				<FeatherIcon name="filter" class="h-8 w-8 mx-auto mb-2 opacity-50" />
+				<p class="text-sm">No filters added yet</p>
+				<p class="text-xs">Click "Add Filter" to filter all charts in this dashboard</p>
+			</div>
+
+			<!-- Action Buttons -->
+			<div v-if="hasFilters" class="flex justify-between items-center mt-4 pt-3 border-t">
+				<Button
+					@click="resetFilters"
+					variant="ghost"
+					size="sm"
+					label="Clear All"
+				/>
+				<Button
+					@click="applyFilters"
+					variant="solid"
+					size="sm"
+					label="Apply Filters"
+				/>
+			</div>
+		</div>
+	</div>
+</template>
+
+<style scoped>
+.dashboard-global-filter {
+	@apply relative;
+}
+</style>

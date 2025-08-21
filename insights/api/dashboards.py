@@ -117,3 +117,40 @@ def update_dashboard_preview(dashboard_name: str):
     dashboard = frappe.get_doc("Insights Dashboard v3", dashboard_name)
     file_url = dashboard.generate_dashboard_preview()
     return file_url
+
+
+@insights_whitelist()
+@validate_type
+def fetch_dashboard_chart_data(dashboard_name: str, chart_name: str, filters=None):
+    """
+    API endpoint to fetch chart data with dashboard-level filters applied.
+    
+    Args:
+        dashboard_name: Name of the dashboard
+        chart_name: Name of the chart to fetch data for
+        filters: List of filter objects to apply
+    
+    Returns:
+        Chart data with filters applied
+    """
+    dashboard = frappe.get_cached_doc("Insights Dashboard v3", dashboard_name)
+    return dashboard.fetch_chart_data(chart_name, filters)
+
+
+@insights_whitelist()
+@validate_type
+def get_dashboard_filter_options(dashboard_name: str, query_name: str, column_name: str, search_term=None):
+    """
+    Get distinct values for a column to use in dashboard filters.
+    
+    Args:
+        dashboard_name: Name of the dashboard
+        query_name: Name of the query
+        column_name: Name of the column
+        search_term: Optional search term to filter values
+    
+    Returns:
+        List of distinct column values
+    """
+    dashboard = frappe.get_cached_doc("Insights Dashboard v3", dashboard_name)
+    return dashboard.get_distinct_column_values(query_name, column_name, search_term)

@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import { downloadImage } from '../helpers'
 import useDashboard from './dashboard'
 import DashboardItem from './DashboardItem.vue'
+import DashboardGlobalFilter from './DashboardGlobalFilter.vue'
 import VueGridLayout from './VueGridLayout.vue'
 
 const props = defineProps<{ name: string }>()
@@ -28,6 +29,21 @@ async function downloadDashboardImage() {
 	if (!dashboardContainer.value) return
 	await downloadImage(dashboardContainer.value, `${dashboard.doc.title}.png`)
 }
+
+// Dashboard filtering state
+const dashboardFilters = ref<any[]>([])
+
+const handleFilterApplied = (filters: any[]) => {
+	dashboardFilters.value = filters
+	dashboard.setGlobalFilters(filters)
+	dashboard.refresh(true) // Force refresh all charts with new filters
+}
+
+const handleFilterReset = () => {
+	dashboardFilters.value = []
+	dashboard.clearGlobalFilters()
+	dashboard.refresh(true) // Force refresh to clear filters
+}
 </script>
 
 <template>
@@ -39,6 +55,10 @@ async function downloadDashboardImage() {
 			]"
 		/>
 		<div class="flex items-center gap-2">
+			<DashboardGlobalFilter
+				@filter-applied="handleFilterApplied"
+				@filter-reset="handleFilterReset"
+			/>
 			<Button variant="outline" @click="() => dashboard.refresh()" label="Refresh">
 				<template #prefix>
 					<RefreshCcw class="h-4 w-4 text-gray-700" stroke-width="1.5" />
