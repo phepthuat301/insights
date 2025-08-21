@@ -47,19 +47,74 @@ const loadAvailableColumns = async () => {
 	const chartItems = dashboard.doc.items.filter(item => item.type === 'chart')
 	console.log('Chart items found:', chartItems)
 	
-	// For now, let's add some mock columns to test the UI
-	const mockColumns = [
-		{ query: 'sample_query', column: 'Time', label: 'Time', type: 'Date' },
-		{ query: 'sample_query', column: 'Category', label: 'Category', type: 'String' },
-		{ query: 'sample_query', column: 'Amount', label: 'Amount', type: 'Number' },
-		{ query: 'sample_query', column: 'Status', label: 'Status', type: 'String' }
-	]
+	const columns: typeof availableColumns.value = []
 	
-	availableColumns.value = mockColumns
-	console.log('Available columns set:', availableColumns.value)
+	for (const item of chartItems) {
+		try {
+			// Get the chart document
+			const chartDoc = await call('frappe.client.get_doc', {
+				doctype: 'Insights Chart v3',
+				name: item.chart
+			})
+			
+			const queryName = chartDoc.query || chartDoc.data_query
+			if (!queryName) continue
+			
+			console.log('Loading query:', queryName)
+			
+			// Get the query document
+			const queryDoc = await call('frappe.client.get_doc', {
+				doctype: 'Insights Query v3',
+				name: queryName
+			})
+			
+			// Parse operations to extract dimensions and measures
+			const operations = JSON.parse(queryDoc.operations || '[]')
+			const summarizeOp = operations.find((op: any) => op.type === 'summarize')
+			
+			if (summarizeOp) {
+				// Add dimensions
+				if (summarizeOp.dimensions) {
+					summarizeOp.dimensions.forEach((dim: any) => {
+						// Check if column already exists to avoid duplicates
+						const exists = columns.find(col => 
+							col.query === queryName && col.column === dim.column_name
+						)
+						if (!exists) {
+							columns.push({
+								query: queryName,
+								column: dim.column_name,
+								label: dim.label || dim.column_name,
+								type: dim.data_type || 'String'
+							})
+						}
+					})
+				}
+				
+				// Add measures (optional, for filtering on aggregated values)
+				if (summarizeOp.measures) {
+					summarizeOp.measures.forEach((measure: any) => {
+						const exists = columns.find(col => 
+							col.query === queryName && col.column === measure.column_name
+						)
+						if (!exists) {
+							columns.push({
+								query: queryName,
+								column: measure.column_name,
+								label: measure.column_name,
+								type: measure.data_type || 'Number'
+							})
+						}
+					})
+				}
+			}
+		} catch (error) {
+			console.warn('Failed to load columns for chart:', item.chart, error)
+		}
+	}
 	
-	// TODO: Implement proper column loading
-	// The actual implementation should get columns from the queries used in charts
+	availableColumns.value = columns
+	console.log('Available columns loaded:', availableColumns.value)
 }
 
 // Load columns when dashboard is ready
@@ -104,6 +159,8 @@ const applyFilters = () => {
 			label: filter.value?.label
 		}
 	}))
+	
+	console.log('Applying filters:', apiFilters)
 	
 	emit('filter-applied', apiFilters)
 }

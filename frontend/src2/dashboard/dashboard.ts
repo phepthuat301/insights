@@ -180,7 +180,7 @@ function makeDashboard(name: string) {
 		globalFilters.value.forEach((globalFilter) => {
 			if (globalFilter.column?.query && globalFilter.operator?.value && globalFilter.value?.value) {
 				const filter = {
-					column: column(globalFilter.column.column),
+					column: column(globalFilter.column.column_name),
 					operator: globalFilter.operator.value,
 					value: globalFilter.value.value,
 				}

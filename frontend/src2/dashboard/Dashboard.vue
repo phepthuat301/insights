@@ -34,6 +34,7 @@ async function downloadDashboardImage() {
 const dashboardFilters = ref<any[]>([])
 
 const handleFilterApplied = (filters: any[]) => {
+	console.log('Dashboard: Filters applied:', filters)
 	dashboardFilters.value = filters
 	dashboard.setGlobalFilters(filters)
 	dashboard.refresh(true) // Force refresh all charts with new filters
