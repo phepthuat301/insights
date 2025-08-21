@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, reactive, ref, watch } from 'vue'
+import { computed, inject, reactive, ref, watch, onMounted, onUnmounted } from 'vue'
 import { call } from 'frappe-ui'
 import { FilterOperator, FilterValue } from '../types/query.types'
 import { Dashboard } from './dashboard'
@@ -43,64 +43,23 @@ const availableColumns = ref<Array<{
 const loadAvailableColumns = async () => {
 	if (!dashboard.doc.items) return
 	
+	console.log('Loading columns for dashboard:', dashboard.doc.name)
 	const chartItems = dashboard.doc.items.filter(item => item.type === 'chart')
-	const queryNames = new Set<string>()
+	console.log('Chart items found:', chartItems)
 	
-	// Get unique query names from charts
-	for (const item of chartItems) {
-		try {
-			// Call the chart to get its query name
-			const chartDoc = await call('frappe.client.get_doc', {
-				doctype: 'Insights Chart v3',
-				name: item.chart
-			})
-			if (chartDoc.query || chartDoc.data_query) {
-				queryNames.add(chartDoc.query || chartDoc.data_query)
-			}
-		} catch (error) {
-			console.warn('Failed to load chart:', item.chart, error)
-		}
-	}
+	// For now, let's add some mock columns to test the UI
+	const mockColumns = [
+		{ query: 'sample_query', column: 'Time', label: 'Time', type: 'Date' },
+		{ query: 'sample_query', column: 'Category', label: 'Category', type: 'String' },
+		{ query: 'sample_query', column: 'Amount', label: 'Amount', type: 'Number' },
+		{ query: 'sample_query', column: 'Status', label: 'Status', type: 'String' }
+	]
 	
-	// Get columns for each query
-	const columns: typeof availableColumns.value = []
-	for (const queryName of queryNames) {
-		try {
-			const queryDoc = await call('frappe.client.get_doc', {
-				doctype: 'Insights Query v3', 
-				name: queryName
-			})
-			
-			// Parse operations to get available columns
-			const operations = JSON.parse(queryDoc.operations || '[]')
-			const sourceOp = operations.find((op: any) => op.type === 'source')
-			
-			if (sourceOp?.table?.query_name) {
-				// Get columns from the source query
-				const sourceQuery = await call('frappe.client.get_doc', {
-					doctype: 'Insights Query v3',
-					name: sourceOp.table.query_name
-				})
-				const sourceOps = JSON.parse(sourceQuery.operations || '[]')
-				const summarizeOp = sourceOps.find((op: any) => op.type === 'summarize')
-				
-				if (summarizeOp?.dimensions) {
-					summarizeOp.dimensions.forEach((dim: any) => {
-						columns.push({
-							query: queryName,
-							column: dim.column_name,
-							label: dim.label || dim.column_name,
-							type: dim.data_type || 'String'
-						})
-					})
-				}
-			}
-		} catch (error) {
-			console.warn('Failed to load query columns:', queryName, error)
-		}
-	}
+	availableColumns.value = mockColumns
+	console.log('Available columns set:', availableColumns.value)
 	
-	availableColumns.value = columns
+	// TODO: Implement proper column loading
+	// The actual implementation should get columns from the queries used in charts
 }
 
 // Load columns when dashboard is ready
@@ -209,14 +168,30 @@ const hasFilters = computed(() => dashboardFilters.value.length > 0)
 const activeFiltersCount = computed(() => 
 	dashboardFilters.value.filter(f => f.column && f.operator && f.value).length
 )
+
+// Click outside to close filter panel
+const filterContainer = ref<HTMLElement>()
+
+const handleClickOutside = (event: MouseEvent) => {
+	if (filterContainer.value && !filterContainer.value.contains(event.target as Node)) {
+		isOpen.value = false
+	}
+}
+
+onMounted(() => {
+	document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+	document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
-	<div class="dashboard-global-filter">
+	<div class="dashboard-global-filter" ref="filterContainer">
 		<!-- Filter Toggle Button -->
 		<Button
-			v-if="!isOpen"
-			@click="isOpen = true"
+			@click="isOpen = !isOpen"
 			variant="outline"
 			:label="`Filters${activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ''}`"
 		>
@@ -226,7 +201,7 @@ const activeFiltersCount = computed(() =>
 		</Button>
 
 		<!-- Filter Panel -->
-		<div v-if="isOpen" class="border rounded-lg bg-white p-4 mb-4 shadow-sm">
+		<div v-if="isOpen" class="absolute top-full right-0 z-50 mt-2 w-[600px] max-w-[90vw] border rounded-lg bg-white p-4 shadow-lg">
 			<div class="flex items-center justify-between mb-3">
 				<h3 class="text-sm font-medium text-gray-900">Dashboard Filters</h3>
 				<div class="flex items-center gap-2">
@@ -257,38 +232,46 @@ const activeFiltersCount = computed(() =>
 					class="flex items-center gap-2 p-3 border rounded bg-gray-50"
 				>
 					<!-- Column Selection -->
-					<Dropdown
-						:options="availableColumns.map(col => ({
-							label: `${col.label} (${col.query})`,
-							value: col,
-							onClick: () => {
-								filter.column = col
-								filter.operator = null
-								filter.value = null
-							}
-						}))"
-						:button="{
-							label: filter.column ? `${filter.column.label} (${filter.column.query})` : 'Select Column',
-							variant: 'outline'
-						}"
-					/>
+					<div class="flex-1">
+						<Dropdown
+							:options="availableColumns.map(col => ({
+								label: `${col.label} (${col.query})`,
+								value: col,
+								onClick: () => {
+									console.log('Selected column:', col)
+									filter.column = col
+									filter.operator = null
+									filter.value = null
+								}
+							}))"
+							:button="{
+								label: filter.column ? `${filter.column.label} (${filter.column.query})` : 'Select Column',
+								variant: 'outline'
+							}"
+						/>
+						<div class="text-xs text-gray-500 mt-1">
+							{{ availableColumns.length }} columns available
+						</div>
+					</div>
 
 					<!-- Operator Selection -->
-					<Dropdown
-						v-if="filter.column"
-						:options="getOperatorOptions(filter.column.type).map(op => ({
-							label: op.label,
-							value: op,
-							onClick: () => {
-								filter.operator = op
-								filter.value = null
-							}
-						}))"
-						:button="{
-							label: filter.operator ? filter.operator.label : 'Select Operator',
-							variant: 'outline'
-						}"
-					/>
+					<div v-if="filter.column" class="flex-1">
+						<Dropdown
+							:options="getOperatorOptions(filter.column.type).map(op => ({
+								label: op.label,
+								value: op,
+								onClick: () => {
+									console.log('Selected operator:', op)
+									filter.operator = op
+									filter.value = null
+								}
+							}))"
+							:button="{
+								label: filter.operator ? filter.operator.label : 'Select Operator',
+								variant: 'outline'
+							}"
+						/>
+					</div>
 
 					<!-- Value Input -->
 					<div v-if="filter.operator" class="flex-1">
@@ -362,5 +345,10 @@ const activeFiltersCount = computed(() =>
 <style scoped>
 .dashboard-global-filter {
 	@apply relative;
+}
+
+/* Ensure the filter panel appears above other content */
+.dashboard-global-filter .absolute {
+	box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 </style>
